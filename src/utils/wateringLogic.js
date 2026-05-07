@@ -1,0 +1,52 @@
+// wateringLogic.js — dedicated watering advice logic.
+// Separated from plantHealth.js so it can be extended with ML predictions later.
+// An ML model would simply replace or supplement getDetailedWateringAdvice().
+
+/**
+ * Returns a detailed watering guidance object.
+ *
+ * @param {object} telemetry - latest telemetry snapshot
+ * @returns {{ urgency: string, title: string, body: string, tips: string[] }}
+ */
+export function getDetailedWateringAdvice(telemetry) {
+  const { soilMoisture, temperature, airHumidity } = telemetry;
+
+  // Urgency levels: 'ok' | 'soon' | 'now'
+  let urgency = 'ok';
+  let title = '';
+  let body = '';
+  const tips = [];
+
+  if (soilMoisture <= 20) {
+    urgency = 'now';
+    title = 'Water Immediately';
+    body = 'The soil is critically dry. Delay will stress the plant and may cause leaf wilting or browning.';
+  } else if (soilMoisture <= 30) {
+    urgency = 'soon';
+    title = 'Water Soon';
+    body = 'Soil moisture is below the recommended level. Water the plant in the next 24 hours.';
+  } else if (soilMoisture <= 50) {
+    urgency = 'ok';
+    title = 'Monitor Moisture';
+    body = 'Soil moisture is adequate but trending down. Check again in 1–2 days.';
+  } else {
+    urgency = 'ok';
+    title = 'Well Hydrated';
+    body = 'The plant has plenty of moisture. No watering needed right now.';
+  }
+
+  // Contextual tips based on other conditions
+  if (temperature > 28) {
+    tips.push('High temperature increases evaporation — you may need to water more frequently.');
+  }
+  if (airHumidity < 40) {
+    tips.push('Low air humidity causes faster leaf transpiration. Consider misting the leaves.');
+  }
+  if (airHumidity > 75) {
+    tips.push('High humidity slows moisture loss — be careful not to overwater.');
+  }
+  tips.push('Always water at the base of the plant, not on the leaves.');
+  tips.push('Ensure the pot has drainage holes to prevent root rot.');
+
+  return { urgency, title, body, tips };
+}
