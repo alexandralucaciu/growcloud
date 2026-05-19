@@ -69,7 +69,7 @@ export default function PlantHealth() {
     <div>
       <SectionTitle
         title="Plant Health"
-        subtitle="Rule-based evaluation of current environmental conditions"
+        subtitle="Detailed breakdown of current plant conditions"
       />
 
       {/* Overall status */}

@@ -29,7 +29,7 @@ export default function Telemetry() {
     <div>
       <SectionTitle
         title="Telemetry"
-        subtitle="24-hour history of sensor readings"
+        subtitle="Recent sensor history and access to the full ThingsBoard dashboard"
       />
 
       {/* Chart selector tabs */}
@@ -87,8 +87,8 @@ export default function Telemetry() {
 
       {/* ThingsBoard integration */}
       <SectionTitle
-        title="ThingsBoard Integration"
-        subtitle="Connect to the full telemetry dashboard"
+        title="Full Dashboard"
+        subtitle="Open the complete live dashboard in ThingsBoard"
       />
       <ThingsBoardEmbed
         mode={TB_CONFIG.embedMode}

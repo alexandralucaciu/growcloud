@@ -6,5 +6,5 @@ export const navItems = [
   { to: '/health',    label: 'Plant Health',     icon: '💚' },
   { to: '/watering',  label: 'Watering',         icon: '💧' },
   { to: '/telemetry', label: 'Telemetry',        icon: '📈' },
-  { to: '/settings',  label: 'Settings & About', icon: 'ℹ️'  },
+  { to: '/settings', label: 'Device & About',   icon: 'ℹ️'  },
 ];

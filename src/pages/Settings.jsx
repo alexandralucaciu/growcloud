@@ -1,4 +1,4 @@
-// Settings.jsx — device info and project about page
+// Settings.jsx — Device & About page
 import SectionTitle from '../components/common/SectionTitle';
 import SummaryCard from '../components/cards/SummaryCard';
 
@@ -22,8 +22,8 @@ export default function Settings() {
   return (
     <div>
       <SectionTitle
-        title="Settings & About"
-        subtitle="Device information and project details"
+        title="Device & About"
+        subtitle="Hardware details and project background"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -55,7 +55,7 @@ export default function Settings() {
       </div>
 
       {/* About */}
-      <SummaryCard title="About GrowCloud" className="mb-6">
+      <SummaryCard title="About GrowCloud">
         <div className="flex items-start gap-4">
           <span className="text-4xl shrink-0">🌱</span>
           <div className="text-sm text-gray-700 space-y-2">
@@ -76,33 +76,6 @@ export default function Settings() {
           </div>
         </div>
       </SummaryCard>
-
-      {/* Placeholder settings */}
-      <SummaryCard title="App Settings (Planned)">
-        <div className="space-y-4 text-sm text-gray-500">
-          <SettingRow label="ThingsBoard Dashboard URL" placeholder="https://thingsboard.io/dashboards/..." />
-          <SettingRow label="Plant Name" placeholder="e.g. Monstera Deliciosa" />
-          <SettingRow label="Soil Moisture Alert Threshold" placeholder="e.g. 30%" />
-          <p className="text-xs text-gray-400 pt-2">
-            Settings persistence will be added in a future update (localStorage or backend).
-          </p>
-        </div>
-      </SummaryCard>
-    </div>
-  );
-}
-
-function SettingRow({ label, placeholder }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-      <label className="w-56 text-gray-600 font-medium shrink-0">{label}</label>
-      <input
-        type="text"
-        disabled
-        placeholder={placeholder}
-        className="flex-1 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-gray-400
-          text-sm cursor-not-allowed"
-      />
     </div>
   );
 }
