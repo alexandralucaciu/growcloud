@@ -11,22 +11,22 @@ export const TB_CONFIG = {
   // ── Mode switch ────────────────────────────────────────────────────────────
   // true  → use local mock data (default, works offline)
   // false → fetch real telemetry from ThingsBoard
-  USE_MOCK: true,
+  USE_MOCK: import.meta.env.VITE_USE_MOCK_DATA !== 'false',
 
   // ── ThingsBoard connection ─────────────────────────────────────────────────
   // Your ThingsBoard server base URL (no trailing slash)
   // Example: 'https://thingsboard.cloud'
-  serverUrl: '',
+  serverUrl: import.meta.env.VITE_THINGSBOARD_SERVER_URL || '',
 
   // Device access token from ThingsBoard → Device → Manage credentials
-  deviceToken: '',
+  deviceToken: import.meta.env.VITE_THINGSBOARD_DEVICE_TOKEN || '',
 
   // ── Dashboard embed ────────────────────────────────────────────────────────
   // Public dashboard URL for the Telemetry page integration section.
   // Leave empty to show the "not configured" placeholder.
   // Example: 'https://thingsboard.cloud/dashboard/PUBLIC_ID?publicId=PUBLIC_ID'
-  dashboardUrl: '',
-
+ 
+  dashboardUrl: 'https://eu.thingsboard.cloud/dashboard/45f3fa20-555e-11f1-be5a-b9befc3a4888?publicId=1eb36ba0-539a-11f1-be5a-b9befc3a4888',
   // 'link' → show a button that opens ThingsBoard in a new tab (recommended)
   // 'embed' → embed the dashboard in an iframe directly on the page
   embedMode: 'link',

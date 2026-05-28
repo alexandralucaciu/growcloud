@@ -34,6 +34,10 @@ export default function Overview() {
   const { urgency, title: waterTitle, body: waterBody } = getDetailedWateringAdvice(telemetry);
   const wStyle = urgencyStyles[urgency];
 
+  const handleOpenHistory = () => { 
+    window.open("https://eu.thingsboard.cloud/dashboard/45f3fa20-555e-11f1-be5a-b9befc3a4888?publicId=1eb36ba0-539a-11f1-be5a-b9befc3a4888", "_blank", "noopener,noreferrer"); 
+  };
+
   return (
     <div>
       <SectionTitle
@@ -104,6 +108,15 @@ export default function Overview() {
             colorClass={telemetry.batteryPercent > 25 ? 'bg-green-300' : 'bg-red-400'}
           />
         </div>
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <button 
+          onClick={handleOpenHistory}
+          className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-colors shadow-sm"
+        >
+          View Full History Dashboard 📊
+        </button>
       </div>
     </div>
   );

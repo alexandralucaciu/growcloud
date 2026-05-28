@@ -8,6 +8,7 @@ import {
   fetchHistoricalData,
   fetchPlantInfo,
 } from '../services/telemetryService';
+import { TB_CONFIG } from '../config/thingsboard';
 
 // Data older than this is considered stale.
 // The ESP32 sends one reading per hour (deep sleep). 90 min gives one missed
@@ -27,20 +28,79 @@ export function useTelemetry() {
 
   useEffect(() => {
     let cancelled = false;
+    let pollInterval = null;
+
+    async function fetchLiveTelemetry() {
+      try {
+        const authRes = await fetch("https://eu.thingsboard.cloud/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: "api-growcloud@planta.ro",
+            password: "API123456"
+          })
+        });
+        if (!authRes.ok) throw new Error("TB Auth Failed");
+        const authData = await authRes.json();
+        const token = authData.token;
+
+        const tbRes = await fetch("https://eu.thingsboard.cloud/api/plugins/telemetry/DEVICE/2f815460-54fd-11f1-be5a-b9befc3a4888/values/timeseries", {
+          headers: { "X-Authorization": `Bearer ${token}` }
+        });
+        if (!tbRes.ok) throw new Error("TB Telemetry Fetch Failed");
+        const tbData = await tbRes.json();
+
+        const temperature = tbData.temperature && tbData.temperature[0] ? tbData.temperature[0].value : '--';
+        const airHumidity = tbData.humidity && tbData.humidity[0] ? tbData.humidity[0].value : '--';
+        const soilMoisture = tbData.soil && tbData.soil[0] ? tbData.soil[0].value : '--';
+        const lightLevel = tbData.light && tbData.light[0] ? tbData.light[0].value : '--';
+        const batteryPercent = tbData.battery && tbData.battery[0] ? tbData.battery[0].value : '100';
+
+        if (!cancelled) {
+          setTelemetry({
+            deviceId: "2f815460-54fd-11f1-be5a-b9befc3a4888",
+            temperature,
+            airHumidity,
+            soilMoisture,
+            lightLevel,
+            batteryPercent,
+            timestamp: tbData.temperature && tbData.temperature[0] ? new Date(tbData.temperature[0].ts).toISOString() : new Date().toISOString()
+          });
+          setError(null);
+        }
+      } catch (err) {
+        console.error("Live fetch error:", err);
+        if (!cancelled) setError(err.message || 'Failed to load live data');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
     async function load() {
       try {
         setLoading(true);
-        const [t, h, p] = await Promise.all([
-          fetchLatestTelemetry(),
+        // Load static/history first
+        const [h, p] = await Promise.all([
           fetchHistoricalData(),
-          fetchPlantInfo(),
+          fetchPlantInfo()
         ]);
         if (!cancelled) {
-          setTelemetry(t);
           setHistory(h);
           setPlantInfo(p);
-          setError(null);
+        }
+
+        // Branch between Live polling or Mock delay
+        if (TB_CONFIG.USE_MOCK) {
+          const t = await fetchLatestTelemetry();
+          if (!cancelled) {
+            setTelemetry(t);
+            setError(null);
+            setLoading(false);
+          }
+        } else {
+          await fetchLiveTelemetry();
+          // Poll every 20 seconds
+          pollInterval = setInterval(fetchLiveTelemetry, 20000);
         }
       } catch (err) {
         if (!cancelled) setError(err.message || 'Failed to load data');
@@ -50,7 +110,10 @@ export function useTelemetry() {
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => { 
+      cancelled = true; 
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, []);
 
   const isStale = telemetry

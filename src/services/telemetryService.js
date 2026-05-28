@@ -53,23 +53,24 @@ function mockDelay(data, ms = 300) {
 // The server base URL is at TB_CONFIG.serverUrl.
 
 async function tbFetchLatest() {
-  // TODO: implement real ThingsBoard latest telemetry fetch.
-  // Example endpoint:
-  //   GET {serverUrl}/api/v1/{deviceToken}/telemetry
-  throw new Error('ThingsBoard live telemetry is not yet implemented. Set USE_MOCK: true in thingsboard.js to use mock data.');
+  // [PENDING VERIFICATION]
+  // TODO: Verify exact ThingsBoard endpoint for reading telemetry.
+  // TODO: Verify exact keys sent by ESP32 and response shape.
+  console.warn('Live telemetry fetch logic pending verification. Falling back to mock data.');
+  return mockDelay(latestTelemetry);
 }
 
 async function tbFetchHistory() {
-  // TODO: implement real ThingsBoard historical telemetry fetch.
-  // Example endpoint:
-  //   GET {serverUrl}/api/plugins/telemetry/DEVICE/{deviceId}/values/timeseries
-  throw new Error('ThingsBoard history fetch is not yet implemented. Set USE_MOCK: true in thingsboard.js to use mock data.');
+  // [PENDING VERIFICATION]
+  // TODO: Verify exact ThingsBoard endpoint for history/timeseries.
+  console.warn('Live history fetch logic pending verification. Falling back to mock data.');
+  return mockDelay(historicalData);
 }
 
 async function tbFetchPlantInfo() {
-  // TODO: implement real device/asset attribute fetch.
-  // Example endpoint:
-  //   GET {serverUrl}/api/v1/{deviceToken}/attributes
-  throw new Error('ThingsBoard device info fetch is not yet implemented. Set USE_MOCK: true in thingsboard.js to use mock data.');
+  // [PENDING VERIFICATION]
+  // TODO: Verify exact ThingsBoard endpoint for device info/attributes.
+  console.warn('Live plant info fetch logic pending verification. Falling back to mock data.');
+  return mockDelay(plantInfo);
 }
 
