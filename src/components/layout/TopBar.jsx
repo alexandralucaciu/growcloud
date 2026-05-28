@@ -34,7 +34,7 @@ export default function TopBar() {
       {/* Mobile dropdown menu */}
       {open && (
         <nav className="flex flex-col border-t border-gray-100 px-4 pb-3 pt-1 gap-1">
-          {navItems.map(({ to, label, icon }) => (
+          {navItems.map(({ to, label, icon, iconClass }) => (
             <NavLink
               key={to}
               to={to}
@@ -48,7 +48,7 @@ export default function TopBar() {
                 }`
               }
             >
-              <span>{icon}</span>
+              {icon ? <span className={`text-base ${iconClass ?? 'text-gray-400'}`}>{icon}</span> : null}
               {label}
             </NavLink>
           ))}
@@ -57,7 +57,7 @@ export default function TopBar() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
               text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors mt-1 border-t border-gray-100 pt-3"
           >
-            <span>🚪</span> Sign out
+            <span className="text-gray-400">Sign out</span>
           </button>
         </nav>
       )}

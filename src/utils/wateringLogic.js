@@ -2,6 +2,8 @@
 // Separated from plantHealth.js so it can be extended with ML predictions later.
 // An ML model would simply replace or supplement getDetailedWateringAdvice().
 
+import { getSoilMoistureAssessment } from './plantHealth';
+
 /**
  * Returns a detailed watering guidance object.
  *
@@ -10,29 +12,38 @@
  */
 export function getDetailedWateringAdvice(telemetry) {
   const { soilMoisture, temperature, airHumidity } = telemetry;
+  const soilAssessment = getSoilMoistureAssessment(soilMoisture);
 
   // Urgency levels: 'ok' | 'soon' | 'now'
-  let urgency = 'ok';
-  let title = '';
-  let body = '';
+  let urgency;
+  let title;
+  let body;
   const tips = [];
 
-  if (soilMoisture <= 20) {
+  if (soilAssessment.severity === 'critical_over_saturated') {
     urgency = 'now';
-    title = 'Water Immediately';
-    body = 'The soil is critically dry. Delay will stress the plant and may cause leaf wilting or browning.';
-  } else if (soilMoisture <= 30) {
+    title = 'Over-saturated / Risk of Root Rot';
+    body = 'Soil moisture has been at 100% for 24 hours. Stop watering immediately and fix drainage.';
+  } else if (soilAssessment.severity === 'critical') {
+    urgency = 'now';
+    title = soilMoisture > 90 ? 'Too Wet for Now' : 'Water Immediately';
+    body = soilMoisture > 90
+      ? 'The soil has stayed excessively wet. Pause watering and let the root zone recover.'
+      : 'The soil is critically dry. Delay will stress the plant and may cause leaf wilting or browning.';
+  } else if (soilAssessment.severity === 'warning') {
     urgency = 'soon';
     title = 'Water Soon';
     body = 'Soil moisture is below the recommended level. Water the plant in the next 24 hours.';
-  } else if (soilMoisture <= 50) {
+  } else if (soilAssessment.severity === 'caution') {
     urgency = 'ok';
     title = 'Monitor Moisture';
-    body = 'Soil moisture is adequate but trending down. Check again in 1–2 days.';
+    body = 'Soil moisture is below the ideal range but not yet critical. Check again soon.';
   } else {
     urgency = 'ok';
-    title = 'Well Hydrated';
-    body = 'The plant has plenty of moisture. No watering needed right now.';
+    title = soilAssessment.severity === 'wet' ? 'Very Moist' : 'Well Hydrated';
+    body = soilAssessment.severity === 'wet'
+      ? 'The soil is above the ideal range. Hold off on watering and keep monitoring it.'
+      : 'The plant has plenty of moisture. No watering needed right now.';
   }
 
   // Contextual tips based on other conditions

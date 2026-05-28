@@ -7,9 +7,9 @@ import SummaryCard from '../components/cards/SummaryCard';
 
 // Urgency colour mapping
 const urgencyStyles = {
-  ok:   { bg: 'bg-green-50',  border: 'border-green-200', text: 'text-green-800',  icon: '💧' },
-  soon: { bg: 'bg-yellow-50', border: 'border-yellow-200',text: 'text-yellow-800', icon: '⚠️' },
-  now:  { bg: 'bg-red-50',    border: 'border-red-200',   text: 'text-red-800',    icon: '🚨' },
+  ok:   { bg: 'bg-green-50',  border: 'border-green-200', text: 'text-green-800',  dot: 'bg-green-500' },
+  soon: { bg: 'bg-yellow-50', border: 'border-yellow-200',text: 'text-yellow-800', dot: 'bg-yellow-500' },
+  now:  { bg: 'bg-red-50',    border: 'border-red-200',   text: 'text-red-800',    dot: 'bg-red-500' },
 };
 
 export default function WateringGuidance() {
@@ -30,7 +30,7 @@ export default function WateringGuidance() {
 
       {/* Main recommendation card */}
       <div className={`rounded-2xl border-2 ${style.border} ${style.bg} p-6 mb-6 flex items-start gap-4`}>
-        <span className="text-3xl shrink-0">{style.icon}</span>
+        <span className={`h-3.5 w-3.5 rounded-full shrink-0 mt-1.5 ${style.dot}`} />
         <div>
           <h2 className={`text-lg font-bold mb-1 ${style.text}`}>{title}</h2>
           <p className="text-sm text-gray-700">{body}</p>
@@ -51,7 +51,7 @@ export default function WateringGuidance() {
         <ul className="space-y-3">
           {tips.map((tip, i) => (
             <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-              <span className="text-green-500 shrink-0 mt-0.5">→</span>
+              <span className="text-green-500 shrink-0 mt-0.5">•</span>
               {tip}
             </li>
           ))}
@@ -61,7 +61,7 @@ export default function WateringGuidance() {
       {/* ML placeholder section */}
       <SummaryCard title="Predictive Watering (Coming Soon)">
         <div className="flex flex-col items-center gap-3 py-4 text-center">
-          <span className="text-3xl">🤖</span>
+          <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">ML</span>
           <p className="text-sm font-medium text-gray-700">
             ML-based watering prediction is planned for a future version.
           </p>

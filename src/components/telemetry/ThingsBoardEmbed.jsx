@@ -43,7 +43,7 @@ export default function ThingsBoardEmbed({ mode = 'link', url, title = 'ThingsBo
   // Default: link mode
   return (
     <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 flex flex-col items-center gap-4">
-      <div className="text-3xl">📊</div>
+      <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Dashboard</div>
       <p className="text-sm font-medium text-gray-700 text-center">{title}</p>
       <a
         href={url}

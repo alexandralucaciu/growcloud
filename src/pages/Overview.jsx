@@ -1,6 +1,7 @@
 // Overview.jsx — main dashboard page showing latest plant state
 import { Link } from 'react-router-dom';
 import { useTelemetry } from '../hooks/useTelemetry';
+import { useNightMode } from '../hooks/useNightMode';
 import { evaluateHealth } from '../utils/plantHealth';
 import { getDetailedWateringAdvice } from '../utils/wateringLogic';
 import { timeAgo, formatValue } from '../utils/formatters';
@@ -12,25 +13,26 @@ import StatusBadge from '../components/cards/StatusBadge';
 import GaugeBar from '../components/charts/GaugeBar';
 
 const metrics = [
-  { key: 'temperature',  label: 'Temperature',   unit: '°C', icon: '🌡️' },
-  { key: 'airHumidity',  label: 'Air Humidity',  unit: '%',  icon: '💨' },
-  { key: 'soilMoisture', label: 'Soil Moisture', unit: '%',  icon: '🌱' },
-  { key: 'lightLevel',   label: 'Light Level',   unit: 'lux',icon: '☀️' },
+  { key: 'temperature',  label: 'Temperature',   unit: '°C' },
+  { key: 'airHumidity',  label: 'Air Humidity',  unit: '%' },
+  { key: 'soilMoisture', label: 'Soil Moisture', unit: '%' },
+  { key: 'lightLevel',   label: 'Light Level',   unit: 'lux' },
 ];
 
 const urgencyStyles = {
-  ok:   { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-800',  icon: '💧' },
-  soon: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-800', icon: '⚠️' },
-  now:  { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-800',    icon: '🚨' },
+  ok:   { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-800',  dot: 'bg-green-500' },
+  soon: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-800', dot: 'bg-yellow-500' },
+  now:  { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-800',    dot: 'bg-red-500' },
 };
 
 export default function Overview() {
   const { telemetry, plantInfo, loading, error } = useTelemetry();
+  const isNightMode = useNightMode();
 
   if (loading) return <Spinner />;
   if (error) return <p className="text-red-500 text-sm p-4">{error}</p>;
 
-  const { status, issues } = evaluateHealth(telemetry);
+  const { status, issues, soilAssessment } = evaluateHealth(telemetry, { isNightMode });
   const { urgency, title: waterTitle, body: waterBody } = getDetailedWateringAdvice(telemetry);
   const wStyle = urgencyStyles[urgency];
 
@@ -55,24 +57,43 @@ export default function Overview() {
       <Link to="/watering" className="block mb-6">
         <div className={`rounded-2xl border-2 ${wStyle.border} ${wStyle.bg} px-5 py-4
           flex items-center gap-4 hover:opacity-90 transition-opacity`}>
-          <span className="text-2xl shrink-0">{wStyle.icon}</span>
+          <span className={`h-3 w-3 rounded-full shrink-0 ${wStyle.dot}`} />
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-bold ${wStyle.text}`}>{waterTitle}</p>
             <p className="text-xs text-gray-600 mt-0.5 leading-snug">{waterBody}</p>
           </div>
-          <span className="text-xs text-gray-400 shrink-0 hidden sm:block">View guidance →</span>
+          <span className="text-xs text-gray-400 shrink-0 hidden sm:block">View guidance</span>
         </div>
       </Link>
 
+      {soilAssessment?.severity === 'critical_over_saturated' && (
+        <div className="mb-6 rounded-2xl border-2 border-red-300 bg-red-50 px-5 py-4 text-red-800 shadow-sm">
+          <p className="text-sm font-bold">{soilAssessment.issue}</p>
+          <p className="text-xs mt-1 text-red-700">{soilAssessment.advice}</p>
+        </div>
+      )}
+
+      <SummaryCard className={`mb-6 border-2 ${soilAssessment.borderClass}`}>
+        <div className="flex items-start gap-4">
+          <span className={`h-3.5 w-3.5 rounded-full shrink-0 mt-1.5 ${soilAssessment.colorClass.split(' ')[0]}`} />
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Soil Moisture Status</p>
+            <p className="text-sm text-gray-600 mt-1">{soilAssessment.note}</p>
+          </div>
+          <span className={`ml-auto text-xs font-semibold px-2 py-1 rounded-full ${soilAssessment.colorClass}`}>
+            {soilAssessment.label}
+          </span>
+        </div>
+      </SummaryCard>
+
       {/* Current sensor readings */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {metrics.map(({ key, label, unit, icon }) => (
+        {metrics.map(({ key, label, unit }) => (
           <MetricCard
             key={key}
             label={label}
             value={formatValue(telemetry[key])}
             unit={unit}
-            icon={icon}
           />
         ))}
       </div>
@@ -80,12 +101,12 @@ export default function Overview() {
       {/* Active alerts */}
       <SummaryCard title="Active Alerts" className="mb-4">
         {issues.length === 0 ? (
-          <p className="text-sm text-green-600 font-medium">✓ All conditions are within normal range.</p>
+          <p className="text-sm text-green-600 font-medium">All conditions are within normal range.</p>
         ) : (
           <ul className="space-y-2">
             {issues.map((issue, i) => (
               <li key={i} className="text-sm text-orange-700 flex items-start gap-2">
-                <span className="mt-0.5 shrink-0">⚠️</span>
+                <span className="mt-0.5 shrink-0 text-orange-500">•</span>
                 {issue}
               </li>
             ))}
@@ -95,17 +116,16 @@ export default function Overview() {
 
       {/* Device battery — secondary information */}
       <div className="flex items-center gap-2.5 px-1 text-xs text-gray-400">
-        <span>🔋</span>
         <span>
           Device battery:{' '}
-          <span className={telemetry.batteryPercent <= 25 ? 'text-red-500 font-medium' : ''}>
+          <span className={telemetry.batteryPercent < 20 ? 'text-red-500 font-medium' : 'text-green-600 font-medium'}>
             {telemetry.batteryPercent}%
           </span>
         </span>
         <div className="w-16">
           <GaugeBar
             value={telemetry.batteryPercent}
-            colorClass={telemetry.batteryPercent > 25 ? 'bg-green-300' : 'bg-red-400'}
+            colorClass={telemetry.batteryPercent >= 20 ? 'bg-green-300' : 'bg-red-400'}
           />
         </div>
       </div>
@@ -115,7 +135,7 @@ export default function Overview() {
           onClick={handleOpenHistory}
           className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-colors shadow-sm"
         >
-          View Full History Dashboard 📊
+          View Full History Dashboard
         </button>
       </div>
     </div>

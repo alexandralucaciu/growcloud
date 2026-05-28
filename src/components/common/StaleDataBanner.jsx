@@ -11,7 +11,7 @@ export default function StaleDataBanner() {
 
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-amber-800 text-sm">
-      <span className="shrink-0 text-base">⚠️</span>
+      <span className="shrink-0 text-base font-semibold">Warning</span>
       <span>
         <strong>Data may be outdated.</strong> Last reading received{' '}
         {telemetry ? timeAgo(telemetry.timestamp) : 'a while ago'}.

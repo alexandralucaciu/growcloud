@@ -22,7 +22,7 @@ export default function Sidebar() {
 
       {/* Navigation links */}
       <nav className="flex flex-col gap-1">
-        {navItems.map(({ to, label, icon }) => (
+        {navItems.map(({ to, label, icon, iconClass }) => (
           <NavLink
             key={to}
             to={to}
@@ -35,7 +35,7 @@ export default function Sidebar() {
               }`
             }
           >
-            <span className="text-base">{icon}</span>
+            {icon ? <span className={`text-base ${iconClass ?? 'text-gray-400'}`}>{icon}</span> : null}
             {label}
           </NavLink>
         ))}
@@ -48,7 +48,7 @@ export default function Sidebar() {
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
             text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors mb-3"
         >
-          <span>🚪</span> Sign out
+          <span className="text-gray-400">Sign out</span>
         </button>
         <p className="text-xs text-gray-400 px-1">GC-ESP32-001<br />License Project 2026</p>
       </div>

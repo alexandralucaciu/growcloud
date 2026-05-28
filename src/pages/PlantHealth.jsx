@@ -1,5 +1,6 @@
 // PlantHealth.jsx — detailed health evaluation page
 import { useTelemetry } from '../hooks/useTelemetry';
+import { useNightMode } from '../hooks/useNightMode';
 import { evaluateHealth } from '../utils/plantHealth';
 import SectionTitle from '../components/common/SectionTitle';
 import Spinner from '../components/common/Spinner';
@@ -9,19 +10,20 @@ import GaugeBar from '../components/charts/GaugeBar';
 
 export default function PlantHealth() {
   const { telemetry, loading, error } = useTelemetry();
+  const isNightMode = useNightMode();
 
   if (loading) return <Spinner />;
   if (error) return <p className="text-red-500 text-sm p-4">{error}</p>;
 
-  const { status, issues, advice } = evaluateHealth(telemetry);
+  const { status, issues, advice, soilAssessment } = evaluateHealth(telemetry, { isNightMode });
 
   const conditionRows = [
     {
       label: 'Soil Moisture',
       value: telemetry.soilMoisture,
       unit: '%',
-      colorClass: telemetry.soilMoisture > 30 ? 'bg-green-400' : 'bg-orange-400',
-      note: telemetry.soilMoisture > 30 ? 'Adequate' : 'Low',
+      colorClass: soilAssessment.colorClass,
+      note: soilAssessment.note,
     },
     {
       label: 'Air Humidity',
@@ -60,8 +62,8 @@ export default function PlantHealth() {
       label: 'Battery',
       value: telemetry.batteryPercent,
       unit: '%',
-      colorClass: telemetry.batteryPercent > 25 ? 'bg-green-400' : 'bg-red-400',
-      note: telemetry.batteryPercent > 25 ? 'OK' : 'Low',
+      colorClass: telemetry.batteryPercent >= 20 ? 'bg-green-400' : 'bg-red-400',
+      note: telemetry.batteryPercent >= 20 ? 'OK' : 'Low',
     },
   ];
 
@@ -75,11 +77,34 @@ export default function PlantHealth() {
       {/* Overall status */}
       <SummaryCard className="mb-6">
         <div className="flex items-center gap-4">
-          <span className="text-4xl">{status === 'Healthy' ? '🌿' : '⚠️'}</span>
           <div>
             <p className="text-sm text-gray-500 mb-1">Overall Status</p>
             <StatusBadge status={status} />
           </div>
+        </div>
+      </SummaryCard>
+
+      {soilAssessment?.severity === 'critical_over_saturated' && (
+        <SummaryCard className="mb-6 border-2 border-red-300 bg-red-50">
+          <div className="flex items-start gap-4 text-red-800">
+            <div>
+              <p className="text-sm font-bold">Critical Root Rot Risk</p>
+              <p className="text-sm mt-1">{soilAssessment.issue}</p>
+            </div>
+          </div>
+        </SummaryCard>
+      )}
+
+      <SummaryCard className={`mb-6 border-2 ${soilAssessment.borderClass}`}>
+        <div className="flex items-center gap-4">
+          <span className={`h-3.5 w-3.5 rounded-full shrink-0 ${soilAssessment.colorClass.split(' ')[0]}`} />
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Soil moisture state</p>
+            <p className="text-sm font-medium text-gray-800">{soilAssessment.note}</p>
+          </div>
+          <span className={`ml-auto text-xs font-semibold px-2 py-1 rounded-full ${soilAssessment.colorClass}`}>
+            {soilAssessment.label}
+          </span>
         </div>
       </SummaryCard>
 
@@ -107,12 +132,12 @@ export default function PlantHealth() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SummaryCard title="Detected Issues">
           {issues.length === 0 ? (
-            <p className="text-sm text-green-600">✓ No issues detected.</p>
+            <p className="text-sm text-green-600">No issues detected.</p>
           ) : (
             <ul className="space-y-2">
               {issues.map((issue, i) => (
                 <li key={i} className="text-sm text-orange-700 flex items-start gap-2">
-                  <span className="shrink-0 mt-0.5">⚠️</span> {issue}
+                  <span className="shrink-0 mt-0.5 text-orange-500">•</span> {issue}
                 </li>
               ))}
             </ul>
@@ -126,7 +151,7 @@ export default function PlantHealth() {
             <ul className="space-y-2">
               {advice.map((tip, i) => (
                 <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                  <span className="shrink-0 mt-0.5 text-green-500">→</span> {tip}
+                  <span className="shrink-0 mt-0.5 text-green-500">•</span> {tip}
                 </li>
               ))}
             </ul>

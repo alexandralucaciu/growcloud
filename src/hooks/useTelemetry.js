@@ -5,7 +5,6 @@
 import { useState, useEffect } from 'react';
 import {
   fetchLatestTelemetry,
-  fetchHistoricalData,
   fetchPlantInfo,
 } from '../services/telemetryService';
 import { TB_CONFIG } from '../config/thingsboard';
@@ -16,19 +15,20 @@ import { TB_CONFIG } from '../config/thingsboard';
 const STALE_THRESHOLD_MS = 90 * 60 * 1000;
 
 /**
- * Loads latest telemetry, history, and plant info.
- * Returns { telemetry, history, plantInfo, isStale, loading, error }
+ * Loads latest telemetry and plant info.
+ * Returns { telemetry, plantInfo, isStale, loading, error }
  */
 export function useTelemetry() {
   const [telemetry, setTelemetry] = useState(null);
-  const [history, setHistory] = useState([]);
   const [plantInfo, setPlantInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
     let pollInterval = null;
+    let clockInterval = null;
 
     async function fetchLiveTelemetry() {
       try {
@@ -79,13 +79,9 @@ export function useTelemetry() {
     async function load() {
       try {
         setLoading(true);
-        // Load static/history first
-        const [h, p] = await Promise.all([
-          fetchHistoricalData(),
-          fetchPlantInfo()
-        ]);
+        // Load static metadata first so pages can render labels immediately.
+        const p = await fetchPlantInfo();
         if (!cancelled) {
-          setHistory(h);
           setPlantInfo(p);
         }
 
@@ -110,15 +106,20 @@ export function useTelemetry() {
     }
 
     load();
+    clockInterval = setInterval(() => {
+      setNow(Date.now());
+    }, 60 * 1000);
+
     return () => { 
       cancelled = true; 
       if (pollInterval) clearInterval(pollInterval);
+      if (clockInterval) clearInterval(clockInterval);
     };
   }, []);
 
   const isStale = telemetry
-    ? Date.now() - new Date(telemetry.timestamp).getTime() > STALE_THRESHOLD_MS
+    ? now - new Date(telemetry.timestamp).getTime() > STALE_THRESHOLD_MS
     : false;
 
-  return { telemetry, history, plantInfo, isStale, loading, error };
+  return { telemetry, plantInfo, isStale, loading, error };
 }

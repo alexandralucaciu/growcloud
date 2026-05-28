@@ -15,7 +15,7 @@ const sensorInfo = [
   { label: 'Air Humidity',  value: 'DHT22 (±2-5%)' },
   { label: 'Soil Moisture', value: 'Capacitive sensor' },
   { label: 'Light Level',   value: 'LDR / BH1750' },
-  { label: 'Battery',       value: 'ADC voltage divider' },
+  { label: 'Battery',       value: 'Lithium-Polymer 2000 mAh' },
 ];
 
 export default function Settings() {
@@ -57,7 +57,7 @@ export default function Settings() {
       {/* About */}
       <SummaryCard title="About GrowCloud">
         <div className="flex items-start gap-4">
-          <span className="text-4xl shrink-0">🌱</span>
+          <span className="text-4xl shrink-0 text-blue-500">ℹ️</span>
           <div className="text-sm text-gray-700 space-y-2">
             <p>
               <strong>GrowCloud</strong> is a smart plant monitoring system built as a university

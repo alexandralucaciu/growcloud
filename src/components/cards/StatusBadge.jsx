@@ -3,6 +3,7 @@ const statusStyles = {
   'Healthy':         'bg-green-100 text-green-800',
   'Attention':       'bg-yellow-100 text-yellow-800',
   'Needs Attention': 'bg-orange-100 text-orange-800',
+  'Over-saturated / Risk of Root Rot': 'bg-red-100 text-red-800',
   'Needs Water':     'bg-blue-100 text-blue-800',
   'Low Light':       'bg-purple-100 text-purple-800',
   'Low Battery':     'bg-red-100 text-red-800',

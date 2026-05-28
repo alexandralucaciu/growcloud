@@ -8,7 +8,7 @@
 // No other file needs to change when switching modes.
 
 import { TB_CONFIG } from '../config/thingsboard';
-import { latestTelemetry, historicalData, plantInfo } from '../data/mockData';
+import { latestTelemetry, plantInfo } from '../data/mockData';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -19,15 +19,6 @@ import { latestTelemetry, historicalData, plantInfo } from '../data/mockData';
 export async function fetchLatestTelemetry() {
   if (TB_CONFIG.USE_MOCK) return mockDelay(latestTelemetry);
   return tbFetchLatest();
-}
-
-/**
- * Returns historical telemetry for charting.
- * @returns {Promise<Array>}
- */
-export async function fetchHistoricalData() {
-  if (TB_CONFIG.USE_MOCK) return mockDelay(historicalData);
-  return tbFetchHistory();
 }
 
 /**
@@ -58,13 +49,6 @@ async function tbFetchLatest() {
   // TODO: Verify exact keys sent by ESP32 and response shape.
   console.warn('Live telemetry fetch logic pending verification. Falling back to mock data.');
   return mockDelay(latestTelemetry);
-}
-
-async function tbFetchHistory() {
-  // [PENDING VERIFICATION]
-  // TODO: Verify exact ThingsBoard endpoint for history/timeseries.
-  console.warn('Live history fetch logic pending verification. Falling back to mock data.');
-  return mockDelay(historicalData);
 }
 
 async function tbFetchPlantInfo() {
