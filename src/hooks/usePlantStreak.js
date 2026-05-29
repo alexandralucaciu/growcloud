@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const STREAK_COUNT_KEY = 'growcloud_streak_count';
 const LAST_VISIT_DATE_KEY = 'growcloud_last_visit_date';
@@ -16,36 +16,35 @@ function getYesterdayDateString(today = new Date()) {
   return formatLocalDate(yesterday);
 }
 
-function resolveStreakState() {
+function resolveAndSaveStreakState() {
   const today = formatLocalDate();
   const yesterday = getYesterdayDateString();
 
   const storedStreak = Number(window.localStorage.getItem(STREAK_COUNT_KEY) || '0');
   const lastVisitDate = window.localStorage.getItem(LAST_VISIT_DATE_KEY);
 
+  let finalStreak = 1;
+
   if (!lastVisitDate) {
-    return { streakCount: 1, today };
+    finalStreak = 1;
+  } else if (lastVisitDate === today) {
+    finalStreak = storedStreak > 0 ? storedStreak : 1;
+  } else if (lastVisitDate === yesterday) {
+    finalStreak = storedStreak > 0 ? storedStreak + 1 : 2;
+  } else {
+    finalStreak = 1;
   }
 
-  if (lastVisitDate === today) {
-    return { streakCount: storedStreak > 0 ? storedStreak : 1, today };
-  }
+  // Sincronizăm IMEDIAT în localStorage, o singură dată la încărcarea aplicației
+  window.localStorage.setItem(STREAK_COUNT_KEY, String(finalStreak));
+  window.localStorage.setItem(LAST_VISIT_DATE_KEY, today);
 
-  if (lastVisitDate === yesterday) {
-    return { streakCount: storedStreak > 0 ? storedStreak + 1 : 2, today };
-  }
-
-  return { streakCount: 1, today };
+  return finalStreak;
 }
 
 export function usePlantStreak() {
-  const [streakCount] = useState(() => resolveStreakState().streakCount);
-
-  useEffect(() => {
-    const { streakCount: nextStreak, today } = resolveStreakState();
-    window.localStorage.setItem(STREAK_COUNT_KEY, String(nextStreak));
-    window.localStorage.setItem(LAST_VISIT_DATE_KEY, today);
-  }, []);
+  // Toată logica rulează o singură dată per sesiune/mount, atomic
+  const [streakCount] = useState(() => resolveAndSaveStreakState());
 
   return { streakCount };
 }
