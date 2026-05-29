@@ -45,17 +45,17 @@ export default function Overview() {
   return (
     <div>
       <div className="mb-6">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <SectionTitle
             title={plantInfo?.name ?? 'My Plant'}
             subtitle={plantInfo?.location}
           />
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100/80 px-3 py-1 text-sm font-semibold text-orange-700 shadow-sm">
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-orange-100/80 px-3 py-1 text-sm font-semibold text-orange-700 shadow-sm">
             <span aria-hidden="true">🔥</span>
             <span>Care Streak: {streakCount} days</span>
           </span>
         </div>
-        <p className="-mt-4 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-gray-500">
           Keep checking GrowCloud daily to maintain your healthy plant care routine!
         </p>
         <p className="mt-1 text-sm text-gray-400">
