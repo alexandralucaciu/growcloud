@@ -1,11 +1,11 @@
 import { Resend } from 'resend';
 
-// Inițializăm clientul Resend folosind cheia secretă din variabilele de mediu
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
-  // 1. Securizare: Permitem apelul doar dacă vine securizat de la Vercel Cron
-  const authHeader = req.headers.get('authorization');
+  // REPARAȚIE: În Node.js, headerele se citesc ca proprietăți de obiect în litere mici
+  const authHeader = req.headers['authorization'];
+  
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ success: false, message: 'Neautorizat' });
   }
