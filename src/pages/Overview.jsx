@@ -28,7 +28,7 @@ const urgencyStyles = {
 
 export default function Overview() {
   const { telemetry, plantInfo, loading, error } = useTelemetry();
-  const { streakCount } = usePlantStreak();
+  const streakCount = telemetry?.careStreak ?? 1;
   const isNightMode = useNightMode();
 
   if (loading) return <Spinner />;
