@@ -16,18 +16,68 @@ async function tbLogin(serverUrl, username, password) {
   return data.token;
 }
 
-// 1. FUNCȚIE NOUĂ: Trimite data curentă ca atribut către ThingsBoard
-async function tbSaveVisit(serverUrl, token, deviceId, dateStr) {
-  const url = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/attributes/SERVER_SCOPE`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "X-Authorization": `Bearer ${token}` 
-    },
-    body: JSON.stringify({ lastUserVisitDate: dateStr }),
-  });
-  if (!res.ok) console.error(`Failed to save visit attribute: ${res.status}`);
+// 1. FUNCȚIE MODIFICATĂ: Citește și salvează Streak-ul + Vizita direct în Server Attributes
+async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
+  const attrScopeUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE`;
+  
+  let currentCloudStreak = 1;
+  let cloudLastVisit = "";
+
+  try {
+    // Citim atributele actuale din ThingsBoard
+    const attrRes = await fetch(attrScopeUrl, {
+      headers: { "X-Authorization": `Bearer ${token}` },
+    });
+    
+    if (attrRes.ok) {
+      const attrs = await attrRes.json();
+      const streakObj = attrs.find(a => a.key === 'cloud_streak_count');
+      const visitObj = attrs.find(a => a.key === 'cloud_last_visit_date');
+      
+      if (streakObj) currentCloudStreak = Number(streakObj.value || '1');
+      if (visitObj) cloudLastVisit = visitObj.value || '';
+    }
+  } catch (err) {
+    console.error("Eroare la citirea atributelor de streak:", err);
+  }
+
+  // Calculăm ieri în format local YYYY-MM-DD
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  let finalStreak = currentCloudStreak;
+
+  // Dacă este prima vizită din această zi, recalculăm streak-ul
+  if (cloudLastVisit !== todayStr) {
+    if (cloudLastVisit === yesterdayStr) {
+      finalStreak += 1; // A intrat și ieri -> streak-ul crește
+    } else if (cloudLastVisit !== '') {
+      finalStreak = 1;  // A trecut mai mult de o zi -> reset la 1
+    } else {
+      finalStreak = 1;  // Primul setup general
+    }
+
+    try {
+      // Salvăm noile date centralizat în ThingsBoard
+      await fetch(attrScopeUrl, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          "X-Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          cloud_streak_count: String(finalStreak),
+          cloud_last_visit_date: todayStr,
+          lastUserVisitDate: todayStr // Pentru compatibilitate cu Cron Job-ul
+        }),
+      });
+    } catch (saveErr) {
+      console.error("Eroare la salvarea noilor atribute în TB:", saveErr);
+    }
+  }
+
+  return finalStreak;
 }
 
 async function tbFetchLatest(serverUrl, token, deviceId, keys) {
@@ -76,11 +126,15 @@ export default async function handler(req, res) {
       cachedTokenAt = now;
     }
 
-    // 2. MODIFICARE: Salvăm automat vizita în ThingsBoard chiar în acest moment
-    const todayStr = new Date().toISOString().split('T')[0]; // ex: "2026-05-29"
-    await tbSaveVisit(serverUrl, cachedToken, deviceId, todayStr).catch(err => 
-      console.error("In-handler visit save error:", err)
-    );
+    const todayStr = new Date().toISOString().split('T')[0]; // ex: "2026-05-30"
+    
+    // 2. MODIFICARE: Calculăm și actualizăm streak-ul din Cloud
+    let careStreak = 1;
+    try {
+      careStreak = await tbHandleCloudStreak(serverUrl, cachedToken, deviceId, todayStr);
+    } catch (err) {
+      console.error("In-handler streak management error:", err);
+    }
 
     const keys = ["temperature", "humidity", "soil", "light", "battery"];
     let tbData;
@@ -93,8 +147,8 @@ export default async function handler(req, res) {
         cachedToken = await tbLogin(serverUrl, username, password);
         cachedTokenAt = Date.now();
         
-        // Încercăm salvarea din nou și cu noul token dacă primul a fost expirat
-        await tbSaveVisit(serverUrl, cachedToken, deviceId, todayStr).catch(() => {});
+        // Reîncercăm logica de streak cu noul token
+        careStreak = await tbHandleCloudStreak(serverUrl, cachedToken, deviceId, todayStr).catch(() => 1);
         
         tbData = await tbFetchLatest(serverUrl, cachedToken, deviceId, keys);
       } else {
@@ -110,7 +164,7 @@ export default async function handler(req, res) {
 
     const ts = t.ts ?? h.ts ?? s.ts ?? l.ts ?? b.ts ?? Date.now();
 
-    // 3. MODIFICARE: Adăugăm lastUserVisitDate în răspunsul JSON pentru Cron Job
+    // 3. MODIFICARE: Returnăm careStreak direct în răspunsul JSON către Frontend
     return res.status(200).json({
       deviceId,
       temperature: toNum(t.value),
@@ -119,7 +173,8 @@ export default async function handler(req, res) {
       lightLevel: toNum(l.value),
       batteryPercent: toNum(b.value),
       timestamp: new Date(ts).toISOString(),
-      lastUserVisitDate: todayStr 
+      lastUserVisitDate: todayStr,
+      careStreak: careStreak 
     });
   } catch (err) {
     return res.status(500).json({ error: "Server error", details: String(err) });
