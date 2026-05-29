@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
-  // REPARAȚIE: În Node.js, headerele se citesc ca proprietăți de obiect în litere mici
+  // Verificarea securității pentru Vercel Cron
   const authHeader = req.headers['authorization'];
   
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -11,34 +11,50 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 2. Interogăm ThingsBoard API pentru a obține timestamp-ul ultimei telemetrii transmise de ESP32
-    // Înlocuiește cu URL-ul serverului tău dacă folosești ThingsBoard Cloud sau instanță proprie
-    const tbUrl = `https://cloud.thingsboard.io/api/v1/${process.env.THINGSBOARD_ACCESS_TOKEN}/attributes`;
+    // Validare: Ne asigurăm că ID-ul dispozitivului există în mediu
+    if (!process.env.TB_DEVICE_ID) {
+      return res.status(500).json({ success: false, message: 'Lipseste variabila TB_DEVICE_ID din Vercel.' });
+    }
+
+    // CORECTURĂ URL: Folosim endpoint-ul public/REST de telemetrie bazat pe Device ID
+    const tbUrl = `https://cloud.thingsboard.io/api/plugins/telemetry/DEVICE/${process.env.TB_DEVICE_ID}/values/attributes?keys=lastConnectTime`;
     
-    const tbResponse = await fetch(tbUrl);
+    const tbResponse = await fetch(tbUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
     if (!tbResponse.ok) {
-      throw new Error(`Eroare la comunicarea cu ThingsBoard: ${tbResponse.statusText}`);
+      throw new Error(`Eroare la comunicarea cu ThingsBoard: ${tbResponse.status} ${tbResponse.statusText}`);
     }
     
-    const attributes = await tbResponse.json();
+    const attributesArray = await tbResponse.json();
     
-    // Extragere timestamp (ThingsBoard returnează de obicei timestamp în milisecunde pentru atribute/telemetrie)
-    const lastTelemetryTimestamp = attributes.lastConnectTime || attributes.ts; 
+    // ThingsBoard returnează de obicei datele sub formă de array pentru acest tip de cerere:
+    // [{ key: "lastConnectTime", lastUpdateTs: 17169..., value: ... }]
+    const lastConnectAttr = Array.isArray(attributesArray) 
+      ? attributesArray.find(attr => attr.key === 'lastConnectTime')
+      : null;
+      
+    // Extragem timestamp-ul ultimei modificări (în milisecunde)
+    const lastTelemetryTimestamp = lastConnectAttr ? lastConnectAttr.lastUpdateTs : null;
     
     if (!lastTelemetryTimestamp) {
-      return res.status(400).json({ success: false, message: 'Nu s-a găsit timestamp-ul ultimei citiri.' });
+      return res.status(400).json({ success: false, message: 'Nu s-a putut extrage timestamp-ul pentru lastConnectTime. Verifică cheia în ThingsBoard.' });
     }
 
     const now = Date.now();
-    const fortyEightHoursInMs = 2 * 24 * 60 * 60 * 1000; // 48 de ore exprimate în milisecunde
+    const fortyEightHoursInMs = 2 * 24 * 60 * 60 * 1000; // 48 de ore
 
-    // 3. Verificăm dacă diferența este mai mare de 2 zile (48 de ore)
+    // Verificăm dacă diferența este mai mare de 2 zile
     if (now - lastTelemetryTimestamp > fortyEightHoursInMs) {
       
-      // 4. Declanșăm trimiterea email-ului de re-engagement
+      // Declanșăm trimiterea email-ului de re-engagement prin Resend
       const emailResult = await resend.emails.send({
         from: 'GrowCloud Alerts <alerts@growcloud.internal>',
-        to: process.env.USER_ALERT_EMAIL, // Email-ul tău unde vrei să primești alerta
+        to: process.env.USER_ALERT_EMAIL, 
         subject: '🚨 [GrowCloud] Planta ta are nevoie de atenție!',
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -60,7 +76,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'Alerta de inactivitate a fost trimisă pe email.', id: emailResult.id });
     }
 
-    // Dacă sistemul a trimis date recent, nu facem nimic
+    // Dacă sistemul a trimis date recent
     return res.status(200).json({ success: true, message: 'Sistemul este activ. Telemetrie recepționată în ultimele 48h.' });
 
   } catch (error) {
