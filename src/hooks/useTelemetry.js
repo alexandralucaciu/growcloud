@@ -30,51 +30,24 @@ export function useTelemetry() {
     let pollInterval = null;
     let clockInterval = null;
 
-    async function fetchLiveTelemetry() {
-      try {
-        const authRes = await fetch("https://eu.thingsboard.cloud/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: "api-growcloud@planta.ro",
-            password: "API123456"
-          })
-        });
-        if (!authRes.ok) throw new Error("TB Auth Failed");
-        const authData = await authRes.json();
-        const token = authData.token;
+async function fetchLiveTelemetry() {
+  try {
+    const res = await fetch("/api/telemetry/latest", { cache: "no-store" });
+    if (!res.ok) throw new Error("API latest telemetry failed");
 
-        const tbRes = await fetch("https://eu.thingsboard.cloud/api/plugins/telemetry/DEVICE/2f815460-54fd-11f1-be5a-b9befc3a4888/values/timeseries", {
-          headers: { "X-Authorization": `Bearer ${token}` }
-        });
-        if (!tbRes.ok) throw new Error("TB Telemetry Fetch Failed");
-        const tbData = await tbRes.json();
+    const data = await res.json();
 
-        const temperature = tbData.temperature && tbData.temperature[0] ? tbData.temperature[0].value : '--';
-        const airHumidity = tbData.humidity && tbData.humidity[0] ? tbData.humidity[0].value : '--';
-        const soilMoisture = tbData.soil && tbData.soil[0] ? tbData.soil[0].value : '--';
-        const lightLevel = tbData.light && tbData.light[0] ? tbData.light[0].value : '--';
-        const batteryPercent = tbData.battery && tbData.battery[0] ? tbData.battery[0].value : '100';
-
-        if (!cancelled) {
-          setTelemetry({
-            deviceId: "2f815460-54fd-11f1-be5a-b9befc3a4888",
-            temperature,
-            airHumidity,
-            soilMoisture,
-            lightLevel,
-            batteryPercent,
-            timestamp: tbData.temperature && tbData.temperature[0] ? new Date(tbData.temperature[0].ts).toISOString() : new Date().toISOString()
-          });
-          setError(null);
-        }
-      } catch (err) {
-        console.error("Live fetch error:", err);
-        if (!cancelled) setError(err.message || 'Failed to load live data');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (!cancelled) {
+      setTelemetry(data);
+      setError(null);
     }
+  } catch (err) {
+    console.error("Live fetch error:", err);
+    if (!cancelled) setError(err.message || "Failed to load live data");
+  } finally {
+    if (!cancelled) setLoading(false);
+  }
+}
 
     async function load() {
       try {
