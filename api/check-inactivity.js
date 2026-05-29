@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     let emailReason = "";
 
     // CONDIȚIA 1: Engagement Utilizator (Nu a mai dat refresh/intrat de 2 zile)
-    if (true) {
+    if (now - lastUserVisitTimestamp > fortyEightHoursInMs) {
       emailReason = "user_inactive";
       await resend.emails.send({
         from: 'onboarding@resend.dev',
