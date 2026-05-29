@@ -39,6 +39,19 @@ function resolveAndSaveStreakState() {
   window.localStorage.setItem(STREAK_COUNT_KEY, String(finalStreak));
   window.localStorage.setItem(LAST_VISIT_DATE_KEY, today);
 
+  // 2. AICI ADROGI CODUL (Corectat pentru Vite):
+  if (lastVisitDate !== today) {
+    // Luăm token-ul din variabilele de mediu ale Vite
+    const tbToken = import.meta.env.VITE_THINGSBOARD_ACCESS_TOKEN; 
+    
+    if (tbToken) {
+      fetch(`https://cloud.thingsboard.io/api/v1/${tbToken}/attributes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lastUserVisitDate: today })
+      }).catch(err => console.log("TB reporting offline", err));
+    }
+  }
   return finalStreak;
 }
 
