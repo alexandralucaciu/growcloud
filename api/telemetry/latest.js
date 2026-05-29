@@ -16,6 +16,20 @@ async function tbLogin(serverUrl, username, password) {
   return data.token;
 }
 
+// 1. FUNCȚIE NOUĂ: Trimite data curentă ca atribut către ThingsBoard
+async function tbSaveVisit(serverUrl, token, deviceId, dateStr) {
+  const url = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/attributes/SERVER_SCOPE`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "X-Authorization": `Bearer ${token}` 
+    },
+    body: JSON.stringify({ lastUserVisitDate: dateStr }),
+  });
+  if (!res.ok) console.error(`Failed to save visit attribute: ${res.status}`);
+}
+
 async function tbFetchLatest(serverUrl, token, deviceId, keys) {
   const url =
     `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries` +
@@ -62,6 +76,12 @@ export default async function handler(req, res) {
       cachedTokenAt = now;
     }
 
+    // 2. MODIFICARE: Salvăm automat vizita în ThingsBoard chiar în acest moment
+    const todayStr = new Date().toISOString().split('T')[0]; // ex: "2026-05-29"
+    await tbSaveVisit(serverUrl, cachedToken, deviceId, todayStr).catch(err => 
+      console.error("In-handler visit save error:", err)
+    );
+
     const keys = ["temperature", "humidity", "soil", "light", "battery"];
     let tbData;
 
@@ -72,6 +92,10 @@ export default async function handler(req, res) {
       if (String(e.message || "").includes("unauthorized")) {
         cachedToken = await tbLogin(serverUrl, username, password);
         cachedTokenAt = Date.now();
+        
+        // Încercăm salvarea din nou și cu noul token dacă primul a fost expirat
+        await tbSaveVisit(serverUrl, cachedToken, deviceId, todayStr).catch(() => {});
+        
         tbData = await tbFetchLatest(serverUrl, cachedToken, deviceId, keys);
       } else {
         throw e;
@@ -86,6 +110,7 @@ export default async function handler(req, res) {
 
     const ts = t.ts ?? h.ts ?? s.ts ?? l.ts ?? b.ts ?? Date.now();
 
+    // 3. MODIFICARE: Adăugăm lastUserVisitDate în răspunsul JSON pentru Cron Job
     return res.status(200).json({
       deviceId,
       temperature: toNum(t.value),
@@ -94,6 +119,7 @@ export default async function handler(req, res) {
       lightLevel: toNum(l.value),
       batteryPercent: toNum(b.value),
       timestamp: new Date(ts).toISOString(),
+      lastUserVisitDate: todayStr 
     });
   } catch (err) {
     return res.status(500).json({ error: "Server error", details: String(err) });
