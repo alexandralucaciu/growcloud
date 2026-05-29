@@ -18,16 +18,45 @@ export default async function handler(req, res) {
 
     const telemetryData = await response.json();
 
-    // Verificăm timestamp-ul senzorilor (hardware)
+    // 1. Verificăm timestamp-ul senzorilor hard (ESP32-S2 Mini)
     if (!telemetryData.timestamp) {
       return res.status(200).json({ success: false, message: 'Lipseste timestamp-ul telemetriei.' });
     }
-
     const lastDeviceTimestamp = new Date(telemetryData.timestamp).getTime();
     
-    // Preluăm data ultimei vizite transmise de latest.js (user engagement)
-    const lastUserVisitStr = telemetryData.lastUserVisitDate || new Date(lastDeviceTimestamp).toISOString().split('T')[0];
-    const lastUserVisitTimestamp = new Date(lastUserVisitStr).getTime();
+    // 2. Interogăm ThingsBoard pentru parametrul nativ de activitate a serverului (User Engagement)
+    const attributesUrl = `${process.env.TB_SERVER_URL || 'https://cloud.thingsboard.io'}/api/plugins/telemetry/DEVICE/${process.env.TB_DEVICE_ID}/values/attributes?keys=lastActivityTime`;
+    
+    // Generăm un token proaspăt local sau folosim o structură simplă de fetch
+    // Pentru siguranță absolută în Cron, dacă ThingsBoard refuză interogarea directă a atributelor, facem fallback pe device timestamp
+    let lastUserVisitTimestamp = lastDeviceTimestamp; 
+
+    try {
+      // Reutilizăm logica ta excelentă de login direct din mediu dacă e nevoie, 
+      // dar Thingsboard permite citirea atributelor de activitate dacă endpoint-ul e configurat public sau prin token-ul stocat
+      const authRes = await fetch(`${process.env.TB_SERVER_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: process.env.TB_USERNAME, password: process.env.TB_PASSWORD }),
+      });
+      
+      if (authRes.ok) {
+        const authData = await authRes.json();
+        const attrRes = await fetch(attributesUrl, {
+          headers: { "X-Authorization": `Bearer ${authData.token}` }
+        });
+        
+        if (attrRes.ok) {
+          const attrData = await attrRes.json();
+          const activityAttr = Array.isArray(attrData) ? attrData.find(a => a.key === 'lastActivityTime') : null;
+          if (activityAttr && activityAttr.lastUpdateTs) {
+            lastUserVisitTimestamp = activityAttr.lastUpdateTs; // Luăm fix valoarea din tabelul tău!
+          }
+        }
+      }
+    } catch (e) {
+      console.log("Fallback pe timestamp-ul telemetriei:", e.message);
+    }
 
     const now = Date.now();
     const fortyEightHoursInMs = 2 * 24 * 60 * 60 * 1000; // 48 de ore
@@ -35,7 +64,7 @@ export default async function handler(req, res) {
     let emailSent = false;
     let emailReason = "";
 
-    // CONDIȚIA 1: Engagement Utilizator (Nu a mai intrat de 2 zile)
+    // CONDIȚIA 1: Engagement Utilizator (Nu a mai dat refresh/intrat de 2 zile)
     if (now - lastUserVisitTimestamp > fortyEightHoursInMs) {
       emailReason = "user_inactive";
       await resend.emails.send({
@@ -58,7 +87,7 @@ export default async function handler(req, res) {
       emailSent = true;
     } 
     
-    // CONDIȚIA 2: Hardware/Baterie (Dispozitivul e offline, chiar dacă userul e activ)
+    // CONDIȚIA 2: Hardware/Baterie (Dispozitivul e offline, chiar dacă userul deschide aplicația)
     if (!emailSent && (now - lastDeviceTimestamp > fortyEightHoursInMs)) {
       emailReason = "device_offline";
       await resend.emails.send({
