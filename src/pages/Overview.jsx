@@ -1,6 +1,7 @@
 // Overview.jsx — main dashboard page showing latest plant state
 import { Link } from 'react-router-dom';
 import { useTelemetry } from '../hooks/useTelemetry';
+import { usePlantStreak } from '../hooks/usePlantStreak';
 import { useNightMode } from '../hooks/useNightMode';
 import { evaluateHealth } from '../utils/plantHealth';
 import { getDetailedWateringAdvice } from '../utils/wateringLogic';
@@ -27,6 +28,7 @@ const urgencyStyles = {
 
 export default function Overview() {
   const { telemetry, plantInfo, loading, error } = useTelemetry();
+  const { streakCount } = usePlantStreak();
   const isNightMode = useNightMode();
 
   if (loading) return <Spinner />;
@@ -42,10 +44,24 @@ export default function Overview() {
 
   return (
     <div>
-      <SectionTitle
-        title={plantInfo?.name ?? 'My Plant'}
-        subtitle={`${plantInfo?.location} · Last updated ${timeAgo(telemetry.timestamp)}`}
-      />
+      <div className="mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <SectionTitle
+            title={plantInfo?.name ?? 'My Plant'}
+            subtitle={plantInfo?.location}
+          />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100/80 px-3 py-1 text-sm font-semibold text-orange-700 shadow-sm">
+            <span aria-hidden="true">🔥</span>
+            <span>Care Streak: {streakCount} days</span>
+          </span>
+        </div>
+        <p className="-mt-4 text-xs text-gray-500">
+          Keep checking GrowCloud daily to maintain your healthy plant care routine!
+        </p>
+        <p className="mt-1 text-sm text-gray-400">
+          Last updated {timeAgo(telemetry.timestamp)}
+        </p>
+      </div>
 
       {/* Overall plant condition */}
       <div className="flex items-center gap-3 mb-4">
