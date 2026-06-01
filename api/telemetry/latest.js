@@ -22,7 +22,7 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
   const attrGetUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE`;
   
   // URL-ul pentru salvarea datelor (POST) trebuie să fie mai scurt în ThingsBoard
-  const attrPostUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/SERVER_SCOPE/attributes`;
+  const attrPostUrl = `${serverUrl}/api/v1/${deviceId}/attributes`;
   
   let currentCloudStreak = 1;
   let cloudLastVisit = "";
