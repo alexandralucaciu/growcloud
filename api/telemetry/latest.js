@@ -17,35 +17,25 @@ async function tbLogin(serverUrl, username, password) {
 }
 
 // 1. FUNCȚIE MODIFICATĂ: Citește și salvează Streak-ul + Vizita direct în Server Attributes
+import fs from 'fs';
+import path from 'path';
+
 async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
-  // 1. Pentru citire, căutăm streak-ul în TIMESERIES (acolo unde îl vom salva)
-  const attrGetUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?keys=cloud_streak_count,cloud_last_visit_date`;
-  
-  // 2. Pentru salvare, folosim endpoint-ul oficial de împins Telemetrie (Timeseries)
-  const telemetryPostUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/timeseries/ANY`;
+  // Stocăm datele într-un fișier JSON temporar în folderul /tmp al serverului Vercel
+  const filePath = path.join('/tmp', `streak_${deviceId}.json`);
   
   let currentCloudStreak = 1;
   let cloudLastVisit = "";
 
+  // 1. CITIRE: Încercăm să citim streak-ul salvat local pe server
   try {
-    // CITIRE DATELOR DIN TIMESERIES
-    const attrRes = await fetch(attrGetUrl, {
-      headers: { "X-Authorization": `Bearer ${token}` },
-    });
-    
-    if (attrRes.ok) {
-      const tsData = await attrRes.json();
-      
-      // ThingsBoard întoarce timesseries ca un array: { key: [ { value: X, ts: Y } ] }
-      if (tsData?.cloud_streak_count?.[0]) {
-        currentCloudStreak = Number(tsData.cloud_streak_count[0].value || '1');
-      }
-      if (tsData?.cloud_last_visit_date?.[0]) {
-        cloudLastVisit = tsData.cloud_last_visit_date[0].value || '';
-      }
+    if (fs.existsSync(filePath)) {
+      const localData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      currentCloudStreak = Number(localData.cloud_streak_count || '1');
+      cloudLastVisit = localData.cloud_last_visit_date || '';
     }
   } catch (err) {
-    console.error("Eroare la citirea telemetriei de streak:", err);
+    console.error("Eroare la citirea streak-ului local de pe server:", err);
   }
 
   // Calculăm ieri în format local YYYY-MM-DD
@@ -55,37 +45,25 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
 
   let finalStreak = currentCloudStreak;
 
-  // Dacă este prima vizită din această zi, recalculăm streak-ul
+  // Dacă este prima vizită din această zi calendaristică, recalculăm streak-ul
   if (cloudLastVisit !== todayStr) {
     if (cloudLastVisit === yesterdayStr) {
-      finalStreak += 1; 
+      finalStreak += 1; // A intrat și ieri -> crește streak-ul
     } else if (cloudLastVisit !== '') {
-      finalStreak = 1;  
+      finalStreak = 1;  // A trecut mai mult de o zi -> reset la 1
     } else {
-      finalStreak = 1;  
+      finalStreak = 1;  // Primul setup general
     }
 
+    // 2. SALVARE: Scriem noile date direct în fișierul de pe server (Scăpăm de apelul API ThingsBoard!)
     try {
-      // SALVARE PRIN POST CA TELEMETRIE LIVE
-      const saveRes = await fetch(telemetryPostUrl, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "X-Authorization": `Bearer ${token}` 
-        },
-        body: JSON.stringify({ 
-          cloud_streak_count: String(finalStreak),
-          cloud_last_visit_date: todayStr,
-          lastUserVisitDate: todayStr 
-        }),
-      });
-
-      if (!saveRes.ok) {
-        const errText = await saveRes.text();
-        console.error(`ThingsBoard a respins salvarea telemetriei (Status ${saveRes.status}): ${errText}`);
-      }
+      const dataToSave = {
+        cloud_streak_count: finalStreak,
+        cloud_last_visit_date: todayStr
+      };
+      fs.writeFileSync(filePath, JSON.stringify(dataToSave), 'utf8');
     } catch (saveErr) {
-      console.error("Eroare la salvarea telemetriei în TB:", saveErr);
+      console.error("Eroare la salvarea streak-ului pe server:", saveErr);
     }
   }
 
