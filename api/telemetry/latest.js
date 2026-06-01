@@ -21,8 +21,8 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
   // URL-ul complet (cu SERVER_SCOPE) este valid doar pentru citirea datelor (GET)
   const attrGetUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE`;
   
-  // URL-ul pentru salvarea datelor (POST) trebuie să fie mai scurt în ThingsBoard
-  const attrPostUrl = `${serverUrl}/api/v1/${deviceId}/attributes`;
+  // URL-ul corect pentru salvarea datelor (POST) prin REST API cu token de utilizator
+  const attrPostUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/SERVER_SCOPE`;
   
   let currentCloudStreak = 1;
   let cloudLastVisit = "";
@@ -63,7 +63,7 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
     }
 
     try {
-      // 2. SALVARE (Modificată pentru a vedea eroarea exactă)
+      // 2. SALVARE (Folosește noul attrPostUrl corect administrativ)
       const saveRes = await fetch(attrPostUrl, {
         method: "POST",
         headers: { 
