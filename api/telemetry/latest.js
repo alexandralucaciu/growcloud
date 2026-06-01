@@ -126,7 +126,7 @@ export default async function handler(req, res) {
       cachedTokenAt = now;
     }
 
-  const todayStr = new Date().toISOString().split('T')[0]; // ex: "2026-05-30"
+  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Bucharest' });
     
     // --- PASUL 1: CITIREA TELEMETRIEI PROASPETE (MUTATĂ SUS) ---
     const keys = ["temperature", "humidity", "soil", "light", "battery"];
