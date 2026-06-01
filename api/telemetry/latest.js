@@ -20,22 +20,25 @@ async function tbLogin(serverUrl, username, password) {
 import fs from 'fs';
 import path from 'path';
 
+import { kv } from '@vercel/kv';
+
 async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
-  // Stocăm datele într-un fișier JSON temporar în folderul /tmp al serverului Vercel
-  const filePath = path.join('/tmp', `streak_${deviceId}.json`);
+  // Cheile unice sub care salvăm datele permanent în cloud-ul Vercel KV
+  const streakKey = `streak:${deviceId}:count`;
+  const visitKey = `streak:${deviceId}:last_visit`;
   
   let currentCloudStreak = 1;
   let cloudLastVisit = "";
 
-  // 1. CITIRE: Încercăm să citim streak-ul salvat local pe server
+  // 1. CITIRE: Luăm datele din Vercel KV
   try {
-    if (fs.existsSync(filePath)) {
-      const localData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      currentCloudStreak = Number(localData.cloud_streak_count || '1');
-      cloudLastVisit = localData.cloud_last_visit_date || '';
-    }
+    const savedStreak = await kv.get(streakKey);
+    const savedVisit = await kv.get(visitKey);
+    
+    if (savedStreak !== null) currentCloudStreak = Number(savedStreak);
+    if (savedVisit !== null) cloudLastVisit = String(savedVisit);
   } catch (err) {
-    console.error("Eroare la citirea streak-ului local de pe server:", err);
+    console.error("Eroare la citirea din Vercel KV:", err);
   }
 
   // Calculăm ieri în format local YYYY-MM-DD
@@ -52,18 +55,15 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
     } else if (cloudLastVisit !== '') {
       finalStreak = 1;  // A trecut mai mult de o zi -> reset la 1
     } else {
-      finalStreak = 1;  // Primul setup general
+      finalStreak = 1;  // Primul setup general în baza de date
     }
 
-    // 2. SALVARE: Scriem noile date direct în fișierul de pe server (Scăpăm de apelul API ThingsBoard!)
+    // 2. SALVARE PERMANENTĂ: Scriem valorile în cloud-ul Vercel KV
     try {
-      const dataToSave = {
-        cloud_streak_count: finalStreak,
-        cloud_last_visit_date: todayStr
-      };
-      fs.writeFileSync(filePath, JSON.stringify(dataToSave), 'utf8');
+      await kv.set(streakKey, finalStreak);
+      await kv.set(visitKey, todayStr);
     } catch (saveErr) {
-      console.error("Eroare la salvarea streak-ului pe server:", saveErr);
+      console.error("Eroare la salvarea în Vercel KV:", saveErr);
     }
   }
 
