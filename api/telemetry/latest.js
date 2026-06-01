@@ -18,17 +18,15 @@ async function tbLogin(serverUrl, username, password) {
 
 // 1. FUNCȚIE MODIFICATĂ: Citește și salvează Streak-ul + Vizita direct în Server Attributes
 async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
-  // URL-ul complet (cu SERVER_SCOPE) este valid doar pentru citirea datelor (GET)
-  const attrGetUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE`;
-  
-  // URL-ul corect pentru salvarea datelor (POST) prin REST API cu token de utilizator
-  const attrPostUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/SERVER_SCOPE`;
+  // Schimbăm scopul în SHARED_SCOPE atât la citire, cât și la salvare
+  const attrGetUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SHARED_SCOPE`;
+  const attrPostUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/SHARED_SCOPE`;
   
   let currentCloudStreak = 1;
   let cloudLastVisit = "";
 
   try {
-    // 1. CITIRE (Rămâne neschimbată, folosind attrGetUrl)
+    // 1. CITIRE (Rămâne neschimbată, doar că trage din SHARED_SCOPE)
     const attrRes = await fetch(attrGetUrl, {
       headers: { "X-Authorization": `Bearer ${token}` },
     });
@@ -52,7 +50,6 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
 
   let finalStreak = currentCloudStreak;
 
-  // Dacă este prima vizită din această zi, recalculăm streak-ul
   if (cloudLastVisit !== todayStr) {
     if (cloudLastVisit === yesterdayStr) {
       finalStreak += 1; 
@@ -63,7 +60,7 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
     }
 
     try {
-      // 2. SALVARE (Folosește noul attrPostUrl corect administrativ)
+      // 2. SALVARE (Trimite pe SHARED_SCOPE, unde ai permisiuni de scriere!)
       const saveRes = await fetch(attrPostUrl, {
         method: "POST",
         headers: { 
@@ -83,7 +80,6 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
       }
     } catch (saveErr) {
       console.error("Eroare la salvarea noilor atribute în TB:", saveErr);
-      // ARUNCĂM EROAREA MAI DEPARTE ca să o vedem în browser în caz de eșec!
       throw saveErr; 
     }
   }
