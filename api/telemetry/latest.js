@@ -126,9 +126,26 @@ export default async function handler(req, res) {
       cachedTokenAt = now;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0]; // ex: "2026-05-30"
+  const todayStr = new Date().toISOString().split('T')[0]; // ex: "2026-05-30"
     
-    // 2. MODIFICARE: Calculăm și actualizăm streak-ul din Cloud
+    // --- PASUL 1: CITIREA TELEMETRIEI PROASPETE (MUTATĂ SUS) ---
+    const keys = ["temperature", "humidity", "soil", "light", "battery"];
+    let tbData;
+
+    try {
+      tbData = await tbFetchLatest(serverUrl, cachedToken, deviceId, keys);
+    } catch (e) {
+      // Dacă token-ul a expirat, reîncercăm o singură dată
+      if (String(e.message || "").includes("unauthorized")) {
+        cachedToken = await tbLogin(serverUrl, username, password);
+        cachedTokenAt = Date.now();
+        tbData = await tbFetchLatest(serverUrl, cachedToken, deviceId, keys);
+      } else {
+        throw e;
+      }
+    }
+
+    // --- PASUL 2: CALCULAREA ȘI SALVAREA STREAK-ULUI (MUTATĂ JOS) ---
     let careStreak = 1;
     try {
       careStreak = await tbHandleCloudStreak(serverUrl, cachedToken, deviceId, todayStr);
@@ -136,26 +153,7 @@ export default async function handler(req, res) {
       console.error("In-handler streak management error:", err);
     }
 
-    const keys = ["temperature", "humidity", "soil", "light", "battery"];
-    let tbData;
-
-    try {
-      tbData = await tbFetchLatest(serverUrl, cachedToken, deviceId, keys);
-    } catch (e) {
-      // If token expired/revoked, retry once
-      if (String(e.message || "").includes("unauthorized")) {
-        cachedToken = await tbLogin(serverUrl, username, password);
-        cachedTokenAt = Date.now();
-        
-        // Reîncercăm logica de streak cu noul token
-        careStreak = await tbHandleCloudStreak(serverUrl, cachedToken, deviceId, todayStr).catch(() => 1);
-        
-        tbData = await tbFetchLatest(serverUrl, cachedToken, deviceId, keys);
-      } else {
-        throw e;
-      }
-    }
-
+    // --- PASUL 3: EXTRAGEREA VALORILOR ---
     const t = pick(tbData, "temperature");
     const h = pick(tbData, "humidity");
     const s = pick(tbData, "soil");
@@ -164,7 +162,7 @@ export default async function handler(req, res) {
 
     const ts = t.ts ?? h.ts ?? s.ts ?? l.ts ?? b.ts ?? Date.now();
 
-    // 3. MODIFICARE: Returnăm careStreak direct în răspunsul JSON către Frontend
+    // --- PASUL 4: RETURNARE JSON CĂTRE FRONTEND ---
     return res.status(200).json({
       deviceId,
       temperature: toNum(t.value),
@@ -176,6 +174,7 @@ export default async function handler(req, res) {
       lastUserVisitDate: todayStr,
       careStreak: careStreak 
     });
+
   } catch (err) {
     return res.status(500).json({ error: "Server error", details: String(err) });
   }
