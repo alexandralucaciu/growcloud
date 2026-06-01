@@ -63,7 +63,7 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
     }
 
     try {
-      // 2. SALVARE (Modificată pentru a bate spre attrPostUrl)
+      // 2. SALVARE (Modificată pentru a vedea eroarea exactă)
       const saveRes = await fetch(attrPostUrl, {
         method: "POST",
         headers: { 
@@ -78,10 +78,13 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
       });
 
       if (!saveRes.ok) {
-        console.error(`ThingsBoard a respins salvarea atributelor: ${saveRes.status}`);
+        const errText = await saveRes.text();
+        throw new Error(`ThingsBoard a respins salvarea (Status ${saveRes.status}): ${errText}`);
       }
     } catch (saveErr) {
       console.error("Eroare la salvarea noilor atribute în TB:", saveErr);
+      // ARUNCĂM EROAREA MAI DEPARTE ca să o vedem în browser în caz de eșec!
+      throw saveErr; 
     }
   }
 
