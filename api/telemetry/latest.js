@@ -18,14 +18,18 @@ async function tbLogin(serverUrl, username, password) {
 
 // 1. FUNCȚIE MODIFICATĂ: Citește și salvează Streak-ul + Vizita direct în Server Attributes
 async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
-  const attrScopeUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE`;
+  // URL-ul complet (cu SERVER_SCOPE) este valid doar pentru citirea datelor (GET)
+  const attrGetUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE`;
+  
+  // URL-ul pentru salvarea datelor (POST) trebuie să fie mai scurt în ThingsBoard
+  const attrPostUrl = `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/SERVER_SCOPE/attributes`;
   
   let currentCloudStreak = 1;
   let cloudLastVisit = "";
 
   try {
-    // Citim atributele actuale din ThingsBoard
-    const attrRes = await fetch(attrScopeUrl, {
+    // 1. CITIRE (Rămâne neschimbată, folosind attrGetUrl)
+    const attrRes = await fetch(attrGetUrl, {
       headers: { "X-Authorization": `Bearer ${token}` },
     });
     
@@ -51,16 +55,16 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
   // Dacă este prima vizită din această zi, recalculăm streak-ul
   if (cloudLastVisit !== todayStr) {
     if (cloudLastVisit === yesterdayStr) {
-      finalStreak += 1; // A intrat și ieri -> streak-ul crește
+      finalStreak += 1; 
     } else if (cloudLastVisit !== '') {
-      finalStreak = 1;  // A trecut mai mult de o zi -> reset la 1
+      finalStreak = 1;  
     } else {
-      finalStreak = 1;  // Primul setup general
+      finalStreak = 1;  
     }
 
     try {
-      // Salvăm noile date centralizat în ThingsBoard
-      await fetch(attrScopeUrl, {
+      // 2. SALVARE (Modificată pentru a bate spre attrPostUrl)
+      const saveRes = await fetch(attrPostUrl, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
@@ -69,9 +73,13 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
         body: JSON.stringify({ 
           cloud_streak_count: String(finalStreak),
           cloud_last_visit_date: todayStr,
-          lastUserVisitDate: todayStr // Pentru compatibilitate cu Cron Job-ul
+          lastUserVisitDate: todayStr 
         }),
       });
+
+      if (!saveRes.ok) {
+        console.error(`ThingsBoard a respins salvarea atributelor: ${saveRes.status}`);
+      }
     } catch (saveErr) {
       console.error("Eroare la salvarea noilor atribute în TB:", saveErr);
     }
