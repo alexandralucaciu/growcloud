@@ -44,7 +44,7 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
   // Calculăm ieri în format local YYYY-MM-DD
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayStr = yesterday.toLocaleDateString('sv-SE', { timeZone: 'Europe/Bucharest' });
 
   let finalStreak = currentCloudStreak;
 
