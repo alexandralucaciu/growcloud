@@ -1,7 +1,6 @@
 // Overview.jsx — main dashboard page showing latest plant state
 import { Link } from 'react-router-dom';
 import { useTelemetry } from '../hooks/useTelemetry';
-import { usePlantStreak } from '../hooks/usePlantStreak';
 import { useNightMode } from '../hooks/useNightMode';
 import { evaluateHealth } from '../utils/plantHealth';
 import { getDetailedWateringAdvice } from '../utils/wateringLogic';
