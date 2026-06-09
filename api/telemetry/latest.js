@@ -70,6 +70,26 @@ async function tbHandleCloudStreak(serverUrl, token, deviceId, todayStr) {
   return finalStreak;
 }
 
+async function tbHandleSaturation(deviceId, soil, nowMs) {
+  const sinceKey = `saturation:${deviceId}:since`;
+  const SAT_THRESHOLD = 95;
+  const TWENTY_FOUR_H = 24 * 60 * 60 * 1000;
+
+  if (soil === null || soil < SAT_THRESHOLD) {
+    await kv.del(sinceKey);
+    return { saturatedSince: null, overSaturated24h: false };
+  }
+
+  let since = await kv.get(sinceKey);
+  if (since === null) {
+    since = nowMs;
+    await kv.set(sinceKey, since);
+  }
+  since = Number(since);
+
+  return { saturatedSince: since, overSaturated24h: nowMs - since >= TWENTY_FOUR_H };
+}
+
 async function tbFetchLatest(serverUrl, token, deviceId, keys) {
   const url =
     `${serverUrl}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries` +
@@ -149,6 +169,12 @@ export default async function handler(req, res) {
     const s = pick(tbData, "soil");
     const l = pick(tbData, "light");
     const b = pick(tbData, "battery", "100");
+    let saturation = { overSaturated24h: false };
+    try {
+      saturation = await tbHandleSaturation(deviceId, toNum(s.value), Date.now());
+    } catch (err) {
+      console.error("Saturation tracking error:", err);
+    }
 
     const ts = t.ts ?? h.ts ?? s.ts ?? l.ts ?? b.ts ?? Date.now();
 
@@ -158,6 +184,7 @@ export default async function handler(req, res) {
       temperature: toNum(t.value),
       airHumidity: toNum(h.value),
       soilMoisture: toNum(s.value),
+      soilOverSaturated24h: saturation.overSaturated24h,
       lightLevel: toNum(l.value),
       batteryPercent: toNum(b.value),
       timestamp: new Date(ts).toISOString(),

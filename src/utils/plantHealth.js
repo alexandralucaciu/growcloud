@@ -4,8 +4,6 @@
 
 import { isNightModeNow } from '../hooks/useNightMode';
 
-const HIGH_MOISTURE_STORAGE_KEY = 'growcloud_high_moisture_since';
-const SATURATION_STORAGE_KEY = 'growcloud_saturation_since';
 const ROOT_ROT_ALERT = '🚨 CRITICAL WARNING: Soil Over-saturation Detected! The soil moisture has been at 100% for the past 24 hours continuously. Your Spathiphyllum is at high risk of root rot due to oxygen deprivation (asfixiere radiculară). Please stop watering immediately and ensure proper pot drainage.';
 
 /**
@@ -32,61 +30,9 @@ function makeAssessment({
   return { severity, label, note, issue, advice, colorClass, borderClass };
 }
 
-function getHighMoistureState(soilMoisture) {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return { activeSince: null, persistedOver24h: false };
-  }
+export function getSoilMoistureAssessment(soilMoisture, overSaturated24h = false) {
 
-  if (soilMoisture < THRESHOLDS.soilMoisture.saturation) {
-    window.localStorage.removeItem(HIGH_MOISTURE_STORAGE_KEY);
-    return { activeSince: null, persistedOver24h: false };
-  }
-
-  const now = Date.now();
-  const storedValue = window.localStorage.getItem(HIGH_MOISTURE_STORAGE_KEY);
-  const activeSince = storedValue ? Number(storedValue) : now;
-
-  if (!storedValue) {
-    window.localStorage.setItem(HIGH_MOISTURE_STORAGE_KEY, String(now));
-    return { activeSince: now, persistedOver24h: false };
-  }
-
-  return {
-    activeSince,
-    persistedOver24h: now - activeSince >= 24 * 60 * 60 * 1000,
-  };
-}
-
-function getSaturationState(soilMoisture) {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return { activeSince: null, persistedOver24h: false };
-  }
-
-  // Track only the near-maximum saturation band so the rule can survive refreshes.
-  if (soilMoisture < THRESHOLDS.soilMoisture.saturation) {
-    window.localStorage.removeItem(SATURATION_STORAGE_KEY);
-    return { activeSince: null, persistedOver24h: false };
-  }
-
-  const now = Date.now();
-  const storedValue = window.localStorage.getItem(SATURATION_STORAGE_KEY);
-  const activeSince = storedValue ? Number(storedValue) : now;
-
-  if (!storedValue) {
-    window.localStorage.setItem(SATURATION_STORAGE_KEY, String(now));
-  }
-
-  return {
-    activeSince,
-    persistedOver24h: now - activeSince >= 24 * 60 * 60 * 1000,
-  };
-}
-
-export function getSoilMoistureAssessment(soilMoisture) {
-  const highMoistureState = getHighMoistureState(soilMoisture);
-  const saturationState = getSaturationState(soilMoisture);
-
-  if (soilMoisture === 100 && saturationState.persistedOver24h) {
+  if (soilMoisture === 100 && overSaturated24h) {
     return makeAssessment({
       severity: 'critical_over_saturated',
       colorClass: 'bg-red-600 text-white',
@@ -98,7 +44,7 @@ export function getSoilMoistureAssessment(soilMoisture) {
     });
   }
 
-  if (soilMoisture >= 95 && saturationState.persistedOver24h) {
+  if (soilMoisture >= 95 && overSaturated24h) {
     return makeAssessment({
       severity: 'wet',
       colorClass: 'bg-red-400 text-white',
@@ -196,7 +142,7 @@ export function evaluateHealth(telemetry, options = {}) {
   const isNightMode = options.isNightMode ?? isNightModeNow();
 
   const { soilMoisture, temperature, airHumidity, lightLevel, batteryPercent } = telemetry;
-  const soilAssessment = getSoilMoistureAssessment(soilMoisture);
+  const soilAssessment = getSoilMoistureAssessment(soilMoisture, telemetry.soilOverSaturated24h);
 
   // --- Soil moisture ---
   if (soilAssessment.issue) {
@@ -270,7 +216,7 @@ export function evaluateHealth(telemetry, options = {}) {
  * @returns {string}
  */
 export function getWateringRecommendation(telemetry) {
-  const soilAssessment = getSoilMoistureAssessment(telemetry.soilMoisture);
+  const soilAssessment = getSoilMoistureAssessment(telemetry.soilMoisture, telemetry.soilOverSaturated24h);
 
   if (soilAssessment.severity === 'critical_over_saturated') {
     return 'Stop watering immediately and fix drainage before resuming.';

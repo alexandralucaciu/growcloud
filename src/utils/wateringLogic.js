@@ -12,7 +12,7 @@ import { getSoilMoistureAssessment } from './plantHealth';
  */
 export function getDetailedWateringAdvice(telemetry) {
   const { soilMoisture, temperature, airHumidity } = telemetry;
-  const soilAssessment = getSoilMoistureAssessment(soilMoisture);
+  const soilAssessment = getSoilMoistureAssessment(soilMoisture, telemetry.soilOverSaturated24h);
 
   // Urgency levels: 'ok' | 'soon' | 'now'
   let urgency;
