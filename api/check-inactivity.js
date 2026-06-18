@@ -4,117 +4,69 @@ import { kv } from '@vercel/kv';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
-  // Verificarea de securitate obligatorie pentru Vercel Crons
+  // Verificare de securitate: doar planificatorul Vercel Cron poate declanșa funcția
   const authHeader = req.headers['authorization'];
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ success: false, message: 'Neautorizat' });
   }
 
-  // Chei unice în Vercel KV pentru a preveni spamul zilnic de emailuri
-  const deviceAlertKey = `alert:${process.env.TB_DEVICE_ID || '2f815460-54fd-11f1-be5a-b9befc3a4888'}:device_email_sent`;
-  const userAlertKey = `alert:${process.env.TB_DEVICE_ID || '2f815460-54fd-11f1-be5a-b9befc3a4888'}:user_email_sent`;
+  const deviceId = process.env.TB_DEVICE_ID;
+  const alertEmail = process.env.USER_ALERT_EMAIL;
+  if (!deviceId || !alertEmail) {
+    return res.status(500).json({
+      success: false,
+      message: 'Lipsesc variabilele de mediu TB_DEVICE_ID și/sau USER_ALERT_EMAIL.',
+    });
+  }
+
+  // Chei în Vercel KV pentru a nu trimite repetat același email
+  const deviceAlertKey = `alert:${deviceId}:device_email_sent`;
+  const userAlertKey = `alert:${deviceId}:user_email_sent`;
+  const visitKey = `streak:${deviceId}:last_visit`;
 
   try {
-    const localTelemetryUrl = `${process.env.VERCEL_PROJECT_URL}/api/telemetry/latest`;
-    
-    const response = await fetch(localTelemetryUrl);
+    const telemetryUrl = `${process.env.VERCEL_PROJECT_URL}/api/telemetry/latest`;
+
+    // Antetul x-cron-secret spune funcției latest.js să NU actualizeze data
+    // ultimei vizite la acest apel automat (altfel cron-ul ar marca zilnic
+    // utilizatorul ca activ și condiția de inactivitate nu s-ar declanșa niciodată).
+    const response = await fetch(telemetryUrl, {
+      headers: { 'x-cron-secret': process.env.CRON_SECRET },
+    });
     if (!response.ok) {
       throw new Error(`Eroare la citirea datelor din latest.js: ${response.statusText}`);
     }
 
     const telemetryData = await response.json();
-
-    // 1. Verificăm timestamp-ul senzorilor hard (ESP32-S2 Mini)
     if (!telemetryData.timestamp) {
-      return res.status(200).json({ success: false, message: 'Lipseste timestamp-ul telemetriei.' });
-    }
-    const lastDeviceTimestamp = new Date(telemetryData.timestamp).getTime();
-    
-    // 2. Interogăm ThingsBoard pentru lastActivityTime (Server Scope)
-    const tbServer = process.env.TB_SERVER_URL || 'https://eu.thingsboard.cloud';
-    const deviceId = process.env.TB_DEVICE_ID || '2f815460-54fd-11f1-be5a-b9befc3a4888';
-    
-    // Corecție URL: Am adăugat /SERVER_SCOPE ca să găsească direct atributul nativ
-    const attributesUrl = `${tbServer}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SERVER_SCOPE?keys=lastActivityTime`;
-    
-    let lastUserVisitTimestamp = lastDeviceTimestamp; 
-
-    try {
-      const authRes = await fetch(`${tbServer}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          username: process.env.TB_USERNAME, 
-          password: process.env.TB_PASSWORD 
-        }),
-      });
-      
-      if (authRes.ok) {
-        const authData = await authRes.json();
-        const attrRes = await fetch(attributesUrl, {
-          headers: { "X-Authorization": `Bearer ${authData.token}` }
-        });
-        
-        if (attrRes.ok) {
-          const attrData = await attrRes.json();
-          const activityAttr = Array.isArray(attrData) ? attrData.find(a => a.key === 'lastActivityTime') : null;
-          // În ThingsBoard, valoarea timestamp-ului brut este direct în proprietatea .value
-          if (activityAttr && activityAttr.value) {
-            lastUserVisitTimestamp = Number(activityAttr.value); 
-          }
-        }
-      }
-    } catch (e) {
-      console.log("Fallback pe timestamp-ul telemetriei:", e.message);
+      return res.status(200).json({ success: false, message: 'Lipsește timestamp-ul telemetriei.' });
     }
 
     const now = Date.now();
-    const fortyEightHoursInMs = 2 * 24 * 60 * 60 * 1000; // 48 de ore
+    const FORTY_EIGHT_H = 2 * 24 * 60 * 60 * 1000; // 48 de ore
+
+    // Ultima citire reală a dispozitivului
+    const lastDeviceTimestamp = new Date(telemetryData.timestamp).getTime();
+
+    // Data ultimei vizite a utilizatorului, salvată în KV de logica de streak
+    // (format YYYY-MM-DD); lipsa ei înseamnă că nu a existat nicio vizită
+    const lastVisitStr = await kv.get(visitKey);
+    const lastVisitTimestamp = lastVisitStr ? new Date(lastVisitStr).getTime() : 0;
+
+    const deviceOffline = now - lastDeviceTimestamp > FORTY_EIGHT_H;
+    const userInactive = now - lastVisitTimestamp > FORTY_EIGHT_H;
 
     let emailSent = false;
-    let emailReason = "";
+    let emailReason = '';
 
-    // CONDIȚIA 1: Engagement Utilizator (Nu a mai dat refresh/intrat de 2 zile)
-    if (now - lastUserVisitTimestamp > fortyEightHoursInMs) {
-      // Verificăm în Vercel KV dacă am trimis deja acest mail de user inactive
-      const alreadySentUser = await kv.get(userAlertKey);
-
-      if (!alreadySentUser) {
-        emailReason = "user_inactive";
-        await resend.emails.send({
-          from: 'GrowCloud Alerts <onboarding@resend.dev>',
-          to: process.env.USER_ALERT_EMAIL || 'alexandra.lucaciu@student.upt.ro',
-          subject: '🔥 [GrowCloud] Nu-ți pierde Care Streak-ul! Planta ta te așteaptă',
-          html: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-              <h2 style="color: #e65100;">Salutare! Spathiphyllum îți simte lipsa! 🌿</h2>
-              <p>Au trecut mai mult de <strong>2 zile</strong> de când nu ai mai deschis dashboard-ul <strong>GrowCloud</strong>.</p>
-              <p>Dacă nu vizitezi aplicația astăzi, îți vei pierde progresul și seria de zile consecutive (Care Streak).</p>
-              <p style="margin-top: 25px;">
-                <a href="${process.env.VERCEL_PROJECT_URL}" style="background-color: #e65100; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                  Salvează Streak-ul Meu!
-                </a>
-              </p>
-            </div>
-          `
-        });
-        await kv.set(userAlertKey, "true");
-        emailSent = true;
-      }
-    } else {
-      // Dacă userul a intrat în timp util, resetăm alerta în KV pentru viitor
-      await kv.del(userAlertKey);
-    }
-    
-    // CONDIȚIA 2: Hardware/Baterie (Dispozitivul e offline, chiar dacă userul se uită pe site)
-    if (!emailSent && (now - lastDeviceTimestamp > fortyEightHoursInMs)) {
+    // CONDIȚIA 1 (prioritară): dispozitivul nu a mai transmis de peste 48 de ore
+    if (deviceOffline) {
       const alreadySentDevice = await kv.get(deviceAlertKey);
-
       if (!alreadySentDevice) {
-        emailReason = "device_offline";
+        emailReason = 'device_offline';
         await resend.emails.send({
           from: 'GrowCloud Alerts <onboarding@resend.dev>',
-          to: process.env.USER_ALERT_EMAIL || 'alexandra.lucaciu@student.upt.ro',
+          to: alertEmail,
           subject: '🚨 [GrowCloud] Dispozitivul tău IoT este Offline!',
           html: `
             <div style="font-family: sans-serif; padding: 20px; color: #333;">
@@ -122,24 +74,53 @@ export default async function handler(req, res) {
               <p>Placa ta ESP32-S2 Mini nu a mai trimis date de telemetrie în ultimele 48 de ore.</p>
               <p>Mergi la ghiveci și repornește dispozitivul sau încarcă bateria pentru a nu lăsa planta nemonitorizată.</p>
             </div>
-          `
+          `,
         });
-        await kv.set(deviceAlertKey, "true");
+        await kv.set(deviceAlertKey, 'true');
         emailSent = true;
       }
-    } else if (now - lastDeviceTimestamp <= fortyEightHoursInMs) {
-      // Dacă placa trimite date din nou și e online, resetăm alerta în KV
+    } else {
+      // Dispozitivul transmite din nou: resetăm alerta pentru viitor
       await kv.del(deviceAlertKey);
+    }
+
+    // CONDIȚIA 2: dispozitivul este online, dar utilizatorul nu a mai
+    // deschis aplicația de peste 2 zile (reminder de continuitate a îngrijirii)
+    if (!userInactive) {
+      await kv.del(userAlertKey);
+    } else if (!deviceOffline) {
+      const alreadySentUser = await kv.get(userAlertKey);
+      if (!alreadySentUser) {
+        emailReason = emailReason || 'user_inactive';
+        await resend.emails.send({
+          from: 'GrowCloud Alerts <onboarding@resend.dev>',
+          to: alertEmail,
+          subject: '🔥 [GrowCloud] Nu-ți pierde Care Streak-ul! Planta ta te așteaptă',
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+              <h2 style="color: #e65100;">Salutare! Spathiphyllum îți simte lipsa! 🌿</h2>
+              <p>Au trecut mai mult de <strong>2 zile</strong> de când nu ai mai deschis dashboard-ul <strong>GrowCloud</strong>.</p>
+              <p>Dacă nu vizitezi aplicația astăzi, îți vei pierde seria de zile consecutive (Care Streak).</p>
+              <p style="margin-top: 25px;">
+                <a href="${process.env.VERCEL_PROJECT_URL}" style="background-color: #e65100; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                  Salvează Streak-ul Meu!
+                </a>
+              </p>
+            </div>
+          `,
+        });
+        await kv.set(userAlertKey, 'true');
+        emailSent = true;
+      }
     }
 
     if (emailSent) {
       return res.status(200).json({ success: true, message: `Email trimis pentru: ${emailReason}` });
     }
-
-    return res.status(200).json({ success: true, message: 'Utilizatorul și dispozitivul sunt activi, sau mailul a fost deja trimis.' });
+    return res.status(200).json({ success: true, message: 'Utilizatorul și dispozitivul sunt activi, sau emailul a fost deja trimis.' });
 
   } catch (error) {
-    console.error("Eroare în Cron Handler:", error);
+    console.error('Eroare în Cron Handler:', error);
     return res.status(200).json({ success: false, error: error.message });
   }
 }
