@@ -6,7 +6,6 @@ const statusStyles = {
   'Over-saturated / Risk of Root Rot': 'bg-red-100 text-red-800',
   'Needs Water':     'bg-blue-100 text-blue-800',
   'Low Light':       'bg-purple-100 text-purple-800',
-  'Low Battery':     'bg-red-100 text-red-800',
   'Offline':         'bg-gray-100 text-gray-600',
 };
 
