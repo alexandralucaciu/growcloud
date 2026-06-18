@@ -58,13 +58,6 @@ export default function PlantHealth() {
       colorClass: telemetry.lightLevel >= 100 ? 'bg-yellow-400' : 'bg-purple-400',
       note: telemetry.lightLevel >= 100 ? 'Sufficient' : 'Low',
     },
-    {
-      label: 'Battery',
-      value: telemetry.batteryPercent,
-      unit: '%',
-      colorClass: telemetry.batteryPercent >= 20 ? 'bg-green-400' : 'bg-red-400',
-      note: telemetry.batteryPercent >= 20 ? 'OK' : 'Low',
-    },
   ];
 
   return (
