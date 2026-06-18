@@ -1,5 +1,5 @@
 // StaleDataBanner.jsx — shown when the last telemetry reading is older than the
-// stale threshold (90 min). Self-contained: calls useTelemetry internally so it
+// stale threshold. Self-contained: calls useTelemetry internally so it
 // can be dropped into the layout without prop drilling.
 import { useTelemetry } from '../../hooks/useTelemetry';
 import { timeAgo } from '../../utils/formatters';
@@ -15,7 +15,7 @@ export default function StaleDataBanner() {
       <span>
         <strong>Data may be outdated.</strong> Last reading received{' '}
         {telemetry ? timeAgo(telemetry.timestamp) : 'a while ago'}.
-        The device may be offline or in deep sleep.
+        The device may be offline its battery may be depleted.
       </span>
     </div>
   );
