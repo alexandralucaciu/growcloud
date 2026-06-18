@@ -139,7 +139,7 @@ export default async function handler(req, res) {
   const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Bucharest' });
     
     // --- PASUL 1: CITIREA TELEMETRIEI PROASPETE (MUTATĂ SUS) ---
-    const keys = ["temperature", "humidity", "soil", "light", "battery"];
+    const keys = ["temperature", "humidity", "soil", "light"];
     let tbData;
 
     try {
@@ -168,7 +168,6 @@ export default async function handler(req, res) {
     const h = pick(tbData, "humidity");
     const s = pick(tbData, "soil");
     const l = pick(tbData, "light");
-    const b = pick(tbData, "battery", "100");
     let saturation = { overSaturated24h: false };
     try {
       saturation = await tbHandleSaturation(deviceId, toNum(s.value), Date.now());
@@ -176,7 +175,7 @@ export default async function handler(req, res) {
       console.error("Saturation tracking error:", err);
     }
 
-    const ts = t.ts ?? h.ts ?? s.ts ?? l.ts ?? b.ts ?? Date.now();
+    const ts = t.ts ?? h.ts ?? s.ts ?? l.ts ?? Date.now();
 
     // --- PASUL 4: RETURNARE JSON CĂTRE FRONTEND ---
     return res.status(200).json({
@@ -186,7 +185,6 @@ export default async function handler(req, res) {
       soilMoisture: toNum(s.value),
       soilOverSaturated24h: saturation.overSaturated24h,
       lightLevel: toNum(l.value),
-      batteryPercent: toNum(b.value),
       timestamp: new Date(ts).toISOString(),
       lastUserVisitDate: todayStr,
       careStreak: careStreak 
