@@ -1,9 +1,8 @@
 // thingsboard.js — central configuration for ThingsBoard integration.
 //
-// To switch from mock data to real ThingsBoard telemetry:
-//   1. Set USE_MOCK to false
-//   2. Fill in serverUrl and deviceToken
-//   3. Optionally add your dashboardUrl for the Telemetry page embed
+// Live telemetry is fetched server-side by the serverless proxy
+//  (api/telemetry/latest.js); 
+//   USE_MOCK switches the app between local mock data the live proxy
 //
 // Nothing else in the app needs to change.
 
