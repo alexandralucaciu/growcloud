@@ -9,10 +9,11 @@ import {
 } from '../services/telemetryService';
 import { TB_CONFIG } from '../config/thingsboard';
 
-// Data older than this is considered stale.
-// The ESP32 sends one reading per hour (deep sleep). 90 min gives one missed
-// cycle of tolerance before alerting the user.
-const STALE_THRESHOLD_MS = 90 * 60 * 1000;
+// Data older than this is considered stale
+// The device transmits one reading every 2 hours via a softwaare timer
+// a 5-hour threshold tolerates one fully missed transmission before the
+// UI flags the data as stale.
+const STALE_THRESHOLD_MS = 5 * 60 * 60 * 1000;
 
 /**
  * Loads latest telemetry and plant info.
