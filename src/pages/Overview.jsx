@@ -10,6 +10,8 @@ import Spinner from '../components/common/Spinner';
 import MetricCard from '../components/cards/MetricCard';
 import SummaryCard from '../components/cards/SummaryCard';
 import StatusBadge from '../components/cards/StatusBadge';
+import DataSourceBadge from '../components/common/DataSourceBadge';
+import { TB_CONFIG } from '../config/thingsboard';
 
 const metrics = [
   { key: 'temperature',  label: 'Temperature',   unit: '°C' },
@@ -36,12 +38,15 @@ export default function Overview() {
   const { urgency, title: waterTitle, body: waterBody } = getDetailedWateringAdvice(telemetry);
   const wStyle = urgencyStyles[urgency];
 
-  const handleOpenHistory = () => { 
-    window.open("https://eu.thingsboard.cloud/dashboard/45f3fa20-555e-11f1-be5a-b9befc3a4888?publicId=1eb36ba0-539a-11f1-be5a-b9befc3a4888", "_blank", "noopener,noreferrer"); 
+  const handleOpenHistory = () => {
+    window.open(TB_CONFIG.dashboardUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
     <div>
+      <div className="mb-4">
+        <DataSourceBadge />
+      </div>
       <div className="mb-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <SectionTitle
