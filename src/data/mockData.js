@@ -8,8 +8,6 @@ export const latestTelemetry = {
   airHumidity: 58,        // %
   soilMoisture: 28,       // % (lower = drier)
   lightLevel: 420,        // lux
-  batteryVoltage: 3.86,   // V  (derived: 3.0 + percent/100 * 1.2)
-  batteryPercent: 72,     // %
   timestamp: new Date(Date.now() - 1000 * 60 * 4).toISOString(), // 4 minutes ago
 };
 
