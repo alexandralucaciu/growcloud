@@ -10,7 +10,6 @@ import Spinner from '../components/common/Spinner';
 import MetricCard from '../components/cards/MetricCard';
 import SummaryCard from '../components/cards/SummaryCard';
 import StatusBadge from '../components/cards/StatusBadge';
-import GaugeBar from '../components/charts/GaugeBar';
 
 const metrics = [
   { key: 'temperature',  label: 'Temperature',   unit: '°C' },
@@ -128,22 +127,6 @@ export default function Overview() {
           </ul>
         )}
       </SummaryCard>
-
-      {/* Device battery — secondary information */}
-      <div className="flex items-center gap-2.5 px-1 text-xs text-gray-400">
-        <span>
-          Device battery:{' '}
-          <span className={telemetry.batteryPercent < 20 ? 'text-red-500 font-medium' : 'text-green-600 font-medium'}>
-            {telemetry.batteryPercent}%
-          </span>
-        </span>
-        <div className="w-16">
-          <GaugeBar
-            value={telemetry.batteryPercent}
-            colorClass={telemetry.batteryPercent >= 20 ? 'bg-green-300' : 'bg-red-400'}
-          />
-        </div>
-      </div>
 
       <div className="mt-6 flex justify-center">
         <button 
