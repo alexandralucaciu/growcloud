@@ -15,7 +15,6 @@ const THRESHOLDS = {
   temperature:  { low: 15, high: 32 },        // °C
   airHumidity:  { low: 40, high: 80 },        // %
   lightLevel:   { low: 100 },                 // lux — below this is low light
-  batteryPercent: { low: 25, critical: 10 },  // %
 };
 
 function makeAssessment({
@@ -176,22 +175,9 @@ export function evaluateHealth(telemetry, options = {}) {
     advice.push('Move the plant closer to a window or add a grow light.');
   }
 
-  // --- Battery ---
-  if (batteryPercent <= 20) {
-    issues.push(`Device battery is low (${batteryPercent}%).`);
-    advice.push('Charge the GrowCloud device as soon as possible.');
-  } else if (batteryPercent <= THRESHOLDS.batteryPercent.critical) {
-    issues.push(`Device battery critically low (${batteryPercent}%).`);
-    advice.push('Charge the GrowCloud device as soon as possible.');
-  } else if (batteryPercent <= THRESHOLDS.batteryPercent.low) {
-    issues.push(`Device battery is low (${batteryPercent}%).`);
-    advice.push('Plan to charge the device soon.');
-  }
-
   // --- Overall status ---
   let status = 'Healthy';
-  const hasUrgent = telemetry.soilMoisture < THRESHOLDS.soilMoisture.critical
-    || telemetry.batteryPercent <= THRESHOLDS.batteryPercent.critical;
+  const hasUrgent = telemetry.soilMoisture < THRESHOLDS.soilMoisture.critical;
 
   if (soilAssessment.severity === 'critical_over_saturated') {
     status = 'Over-saturated / Risk of Root Rot';
