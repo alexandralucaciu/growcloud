@@ -16,7 +16,7 @@ async function tbLogin(serverUrl, username, password) {
   return data.token;
 }
 
-// 1. FUNCȚIE MODIFICATĂ: Citește și salvează Streak-ul + Vizita direct în Server Attributes
+// 1. FUNCȚIE MODIFICATĂ: Calculeaza seria de zile consecutive si o salveaza in Vercel KV
 
 import { kv } from '@vercel/kv';
 
@@ -136,7 +136,7 @@ export default async function handler(req, res) {
 
   const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Bucharest' });
     
-    // --- PASUL 1: CITIREA TELEMETRIEI PROASPETE (MUTATĂ SUS) ---
+    // --- PASUL 1: CITIREA TELEMETRIEI PROASPETE ---
     const keys = ["temperature", "humidity", "soil", "light"];
     let tbData;
 
@@ -153,7 +153,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- PASUL 2: CALCULAREA ȘI SALVAREA STREAK-ULUI (MUTATĂ JOS) ---
+    // --- PASUL 2: CALCULAREA ȘI SALVAREA STREAK-ULUI ---
     let careStreak = 1;
     try {
       careStreak = await tbHandleCloudStreak(serverUrl, cachedToken, deviceId, todayStr);
