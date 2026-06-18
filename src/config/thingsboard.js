@@ -10,7 +10,7 @@ export const TB_CONFIG = {
   // ── Mode switch ────────────────────────────────────────────────────────────
   // true  → use local mock data (default, works offline)
   // false → fetch real telemetry from ThingsBoard
-  USE_MOCK: import.meta.env.VITE_USE_MOCK_DATA !== 'false',
+  USE_MOCK: import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_DATA === 'true',
 
   // ── ThingsBoard connection ─────────────────────────────────────────────────
   // Your ThingsBoard server base URL (no trailing slash)
