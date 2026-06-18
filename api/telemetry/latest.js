@@ -17,8 +17,6 @@ async function tbLogin(serverUrl, username, password) {
 }
 
 // 1. FUNCȚIE MODIFICATĂ: Citește și salvează Streak-ul + Vizita direct în Server Attributes
-import fs from 'fs';
-import path from 'path';
 
 import { kv } from '@vercel/kv';
 
