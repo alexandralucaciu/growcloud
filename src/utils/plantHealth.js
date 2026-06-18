@@ -114,15 +114,15 @@ export function getSoilMoistureAssessment(soilMoisture, overSaturated24h = false
   }
 
   return makeAssessment({
-    severity: highMoistureState.persistedOver24h ? 'critical' : 'wet',
-    colorClass: highMoistureState.persistedOver24h ? 'bg-red-500 text-white' : 'bg-sky-400 text-white',
-    borderClass: highMoistureState.persistedOver24h ? 'border-red-200' : 'border-sky-200',
-    label: highMoistureState.persistedOver24h ? 'Critical' : 'Very Wet',
-    note: highMoistureState.persistedOver24h ? 'Over 24h' : 'Monitor closely',
-    issue: highMoistureState.persistedOver24h
+    severity: overSaturated24h ? 'critical' : 'wet',
+    colorClass: overSaturated24h ? 'bg-red-500 text-white' : 'bg-sky-400 text-white',
+    borderClass: overSaturated24h ? 'border-red-200' : 'border-sky-200',
+    label: overSaturated24h ? 'Critical' : 'Very Wet',
+    note: overSaturated24h ? 'Over 24h' : 'Monitor closely',
+    issue: overSaturated24h
       ? 'Soil moisture has stayed above 90% for more than 24 hours.'
       : '',
-    advice: highMoistureState.persistedOver24h
+    advice: overSaturated24h
       ? 'Hold watering and inspect drainage and root health.'
       : 'Do not water yet and recheck later today.',
   });
