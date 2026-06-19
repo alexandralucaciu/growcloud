@@ -13,7 +13,7 @@ import { TB_CONFIG } from '../config/thingsboard';
 // The device transmits one reading every 2 hours via a softwaare timer
 // a 5-hour threshold tolerates one fully missed transmission before the
 // UI flags the data as stale.
-const STALE_THRESHOLD_MS = 5 * 60 * 60 * 1000;
+const STALE_THRESHOLD_MS = 1 * 60 * 1000;
 
 /**
  * Loads latest telemetry and plant info.
