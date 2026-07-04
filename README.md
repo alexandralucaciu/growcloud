@@ -8,7 +8,7 @@ Autor: Alexandra Lucaciu. Coordonator: Ș.l.dr.ing. Paul NEGÎRLA.
 ## Repository
 
 - Adresă: https://github.com/alexandralucaciu/growcloud
-- Repository privat, partajat intern la cerere coordonatorului și comisiei de evaluare.
+- Repository public
 - Conține doar cod sursă, fără fișiere binare compilate (`node_modules` și `dist` sunt excluse). Credențialele nu sunt incluse, ci configurate prin variabile de mediu.
 
 ## Arhitectură
