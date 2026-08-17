@@ -3,7 +3,7 @@
 An end-to-end IoT system designed to monitor and optimize the microclimate of indoor houseplants (*Spathiphyllum*). The project integrates a battery-powered edge sensing node, ThingsBoard Cloud telemetry, serverless proxy functions, and a responsive React web dashboard.
 
 *Bachelor's Thesis Project — Politehnica University of Timișoara, Systems Engineering (Automation and Applied Informatics), July 2026.*
-*Author: Alexandra Lucaciu | Coordinator: Ș.l.dr.ing. Paul Negîrla*
+*Author: Alexandra Buhai (Lucaciu) | Coordinator: Ș.l.dr.ing. Paul Negîrla*
 
 ---
 
@@ -60,6 +60,17 @@ The project follows a three-tier architecture:
 ├── vercel.json                   # Vercel deployment and cron configuration
 └── vite.config.js                # Vite build configuration
 ```
+
+---
+
+## Gallery & Demo
+
+<p align="center">
+  <img src="./docs/images/front%20picture.jpeg" alt="GrowCloud device - front view" width="45%" />
+  <img src="./docs/images/back%20picture.jpeg" alt="GrowCloud device - back view" width="45%" />
+</p>
+
+📹 **Demo video:** hosted on OneDrive due to file size — see [docs/video/Lucaciu_Alexandra_Video_AIA_Licenta.pdf](./docs/video/Lucaciu_Alexandra_Video_AIA_Licenta.pdf) for the link.
 
 ---
 
