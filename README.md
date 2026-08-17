@@ -131,4 +131,5 @@ The web dashboard and serverless endpoints are configured for continuous deploym
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](./LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](./growcloud
+/LICENSE) file for details.
