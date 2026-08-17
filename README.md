@@ -1,64 +1,134 @@
-# GrowCloud
+# GrowCloud: Smart IoT Microclimate Monitoring System
 
-Sistem IoT de monitorizare a microclimatului unei plante de apartament (Spathiphyllum).
+An end-to-end IoT system designed to monitor and optimize the microclimate of indoor houseplants (*Spathiphyllum*). The project integrates a battery-powered edge sensing node, ThingsBoard Cloud telemetry, serverless proxy functions, and a responsive React web dashboard.
 
-Lucrare de licență, Universitatea Politehnica Timișoara, Ingineria Sistemelor, sesiunea iulie 2026.
-Autor: Alexandra Lucaciu. Coordonator: Ș.l.dr.ing. Paul NEGÎRLA.
+*Bachelor's Thesis Project — Politehnica University of Timișoara, Systems Engineering (Automation and Applied Informatics), July 2026.*
+*Author: Alexandra Lucaciu | Coordinator: Ș.l.dr.ing. Paul Negîrla*
 
-## Repository
+---
 
-- Adresă: https://github.com/alexandralucaciu/growcloud
-- Repository public
-- Conține doar cod sursă, fără fișiere binare compilate (`node_modules` și `dist` sunt excluse). Credențialele nu sunt incluse, ci configurate prin variabile de mediu.
+## System Architecture
 
-## Arhitectură
+The project follows a three-tier architecture:
 
-- Dispozitiv ESP32-S2 Mini (MicroPython): citește temperatura, umiditatea aerului, umiditatea solului și lumina; afișează pe OLED; trimite telemetria prin MQTT la fiecare 2 ore.
-- ThingsBoard Cloud: stochează telemetria ca serii de timp.
-- Aplicație web React/Vite + funcții serverless Vercel: dashboard, evaluarea stării plantei, alerte pe email.
+1. **Edge Node (ESP32-S2 Mini):** Acquires sensor data (temperature, air humidity, ambient light, and capacitive soil moisture), provides local visual feedback via an OLED display, and transmits telemetry over MQTT every 2 hours (or on-demand via push button).
+2. **Cloud Backend (ThingsBoard Cloud):** Collects and persists time-series telemetry data and manages historical logs.
+3. **Serverless Layer & Web Application (React / Vite + Vercel):**
+   - **Secure Serverless Proxy:** Isolates ThingsBoard credentials within backend environment variables (`process.env`). The client-side application queries internal endpoints (`/api/telemetry/latest`), preventing credential leakage.
+   - **Vercel KV (Redis):** Handles persistent state tracking across serverless invocations (e.g., 24-hour soil oversaturation detection, daily user streak, and anti-duplicate email alert throttling).
+   - **Automated Alerts:** Cron functions notify users via email (Resend API) when the device goes offline or critical thresholds are breached.
+   - **Web Dashboard:** Displays live vs. stale data indicators, plant health status (normal, warning, critical), customized watering guides, and historical charts.
 
-## Structura repository-ului
+---
 
-- `firmware/` – cod dispozitiv (MicroPython)
-  - `boot.py`, `main.py` – dezvoltate în cadrul lucrării
-  - `sh1106.py`, `umqttsimple.py`, `sprites.py` – module preluate (driver OLED, client MQTT, sprite)
-- `api/` – funcții serverless Vercel
-  - `telemetry/latest.js` – proxy securizat către ThingsBoard
-  - `check-inactivity.js` – cron pentru alerte pe email
-- `src/` – aplicația web (React)
-- `vercel.json`, `vite.config.js`, `index.html`, `public/` – configurare
+## Hardware Components & Enclosure
 
-## Firmware (ESP32-S2 Mini)
+- **Microcontroller:** ESP32-S2 Mini (MicroPython runtime)
+- **Environmental Sensor:** DHT22 (Air Temperature & Humidity)
+- **Light Sensor:** BH1750 (I2C ambient light sensor in Lux)
+- **Soil Moisture Sensor:** Capacitive Soil Moisture Sensor v2.0 (corrosion-resistant analog probe)
+- **Display:** 1.3" I2C OLED Display (SH1106 driver)
+- **Power Management:** 3.7V 2000 mAh Li-Po battery, TP4056 USB-C charging/protection module, 3.7V-to-5V step-up boost converter, and mechanical toggle switch
+- **Enclosure:** Custom 3D-printed two-piece enclosure designed and sliced for optimal component placement and thermal isolation
 
-Cerințe: placă ESP32-S2 Mini cu MicroPython, mediul Thonny. Codul nu se compilează, se rulează direct pe placă.
+---
 
-Instalare și lansare:
-1. Conectează placa la calculator prin USB-C.
-2. În `firmware/boot.py`, completează `SSID` și `PASS` (Wi-Fi).
-3. În `firmware/main.py`, completează `ACCESS_TOKEN` (token ThingsBoard).
-4. Copiază toate fișierele din `firmware/` pe placă.
-5. La alimentare, `boot.py` conectează Wi-Fi, iar `main.py` pornește automat.
+## Firmware Features (MicroPython)
 
-## Aplicația web (React/Vite + Vercel)
+- **Digital Filtering & Soil Calibration:** 50-sample moving average filter on analog readings to suppress electrical noise. Maps inverted raw ADC values (8191 for dry air, 3320 for saturated water) to a 0–100% moisture scale.
+- **Fault-Tolerant Acquisition:** Implements sentinel error values (-1) if a sensor fails, ensuring uninterrupted MQTT transmission cycles.
+- **Dual Acquisition Modes:** Automated background interval transmission (every 2 hours) and instant on-demand reading triggered by a hardware button.
 
-Cerințe: Node.js 18+ (dezvoltat pe 22), npm.
+---
 
-Variabile de mediu (fișier `.env`):
-- `TB_SERVER_URL`, `TB_USERNAME`, `TB_PASSWORD`, `TB_DEVICE_ID` – ThingsBoard
-- `RESEND_API_KEY`, `USER_ALERT_EMAIL` – alerte email (Resend)
-- `CRON_SECRET` – protejarea cron-ului
-- `VERCEL_PROJECT_URL` – adresa aplicației
+## Repository Structure
 
-Compilare:
 ```
+├── api/
+│   ├── check-inactivity.js       # Vercel cron function for inactivity/offline email alerts
+│   └── telemetry/
+│       └── latest.js             # Secure backend proxy to ThingsBoard API
+├── firmware/
+│   ├── boot.py                   # Wi-Fi initialization
+│   ├── main.py                   # Main sampling loop, digital filtering, and MQTT client
+│   ├── sh1106.py                 # OLED display driver
+│   ├── sprites.py                # Graphical UI assets for the OLED screen
+│   └── umqttsimple.py            # Lightweight MQTT implementation
+├── src/                          # React web application (UI components, hooks, charts)
+├── public/                       # Static web assets
+├── index.html                    # Web entry point
+├── vercel.json                   # Vercel deployment and cron configuration
+└── vite.config.js                # Vite build configuration
+```
+
+---
+
+## Getting Started
+
+### 1. Firmware Setup (ESP32-S2 Mini)
+
+1. Flash MicroPython firmware onto the ESP32-S2 Mini using Thonny IDE or `esptool`.
+2. Open `firmware/boot.py` and configure your local Wi-Fi credentials:
+
+   ```python
+   SSID = "YOUR_WIFI_SSID"
+   PASS = "YOUR_WIFI_PASSWORD"
+   ```
+
+3. Open `firmware/main.py` and insert your ThingsBoard device token:
+
+   ```python
+   ACCESS_TOKEN = "YOUR_THINGSBOARD_TOKEN"
+   ```
+
+4. Upload all files from the `firmware/` directory directly to the root of the ESP32 filesystem.
+5. The device connects to Wi-Fi on boot and begins periodic telemetry reporting.
+
+### 2. Web Application Setup (Local Development)
+
+**Prerequisites**
+
+- Node.js 18+ (tested on Node 22)
+- npm
+
+**Environment Variables**
+
+Create a `.env` file in the root directory and configure the required keys:
+
+```
+TB_SERVER_URL=https://thingsboard.cloud
+TB_USERNAME=your_thingsboard_username
+TB_PASSWORD=your_thingsboard_password
+TB_DEVICE_ID=your_device_id
+RESEND_API_KEY=your_resend_api_key
+USER_ALERT_EMAIL=user@example.com
+CRON_SECRET=your_secure_cron_secret
+VERCEL_PROJECT_URL=http://localhost:5173
+```
+
+**Installation and Execution**
+
+```bash
+# Install dependencies
 npm install
+
+# Start development server
+npm run dev
+
+# Build for production
 npm run build
 ```
 
-Lansare locală (dezvoltare):
-```
-npm run dev
-```
-Aplicația pornește pe `http://localhost:5173`.
+The application will be accessible locally at `http://localhost:5173`.
 
-Producție: găzduită pe Vercel (instalare dependențe, build și publicarea funcțiilor din `api/` automat; cron configurat în `vercel.json`).
+---
+
+## Deployment
+
+The web dashboard and serverless endpoints are configured for continuous deployment on Vercel. Environment variables are managed securely through the Vercel project dashboard, and cron schedules in `vercel.json` run automated inactivity and health checks without requiring dedicated server infrastructure.
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](./LICENSE) file for details.
