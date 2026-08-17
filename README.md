@@ -63,6 +63,15 @@ The project follows a three-tier architecture:
 
 ---
 
+## Hardware / 3D Models
+
+The enclosure and battery holder were custom-designed and sliced for optimal component placement and thermal isolation. Project files (`.3mf`, editable in Cura, PrusaSlicer, or Bambu Studio) are available in [`3d-models/`](./3d-models):
+
+- `project base.3mf` / `project body.3mf` / `project top.3mf` — the three-part enclosure
+- `battery-box1.3mf` / `battery-box2.3mf` — battery compartment
+
+---
+
 ## Gallery & Demo
 
 <p align="center">
